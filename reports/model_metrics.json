@@ -1,0 +1,7 @@
+{
+    "Model_Type": "RandomForestRegressor",
+    "R2_Score": 0.8873,
+    "Mean_Absolute_Error_MAE": 0.0291,
+    "Mean_Squared_Error_MSE": 0.0041,
+    "Root_Mean_Squared_Error_RMSE": 0.0642
+}
