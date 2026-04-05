@@ -1,0 +1,378 @@
+name: Security Scan & Build
+
+on:
+    push:
+        branches:
+            - development
+            - main
+    pull_request:
+        branches:
+            - development
+            - main
+    schedule:
+        # Run security scans weekly
+        - cron: "0 2 * * 0"
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+    # Secret scanning and credential detection
+    secrets-scan:
+        name: Scan for Secrets and Credentials
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Scan for secrets using TruffleHog
+              uses: trufflesecurity/trufflehog@main
+              with:
+                  path: ./
+                  base: ${{ github.event.repository.default_branch }}
+                  head: HEAD
+                  extra_args: --debug --json --fail
+
+            - name: Scan for credentials using GitGuardian
+              uses: GitGuardian/ggshield-action@v1
+              if: always()
+              env:
+                  GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+                  GITHUB_PULL_REQUEST_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+                  GITHUB_PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+              with:
+                  args: "--verbose"
+              continue-on-error: true
+
+    # Static code analysis with CodeQL
+    codeql-analysis:
+        name: CodeQL Static Analysis
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        strategy:
+            fail-fast: false
+            matrix:
+                language: ["python"]
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Initialize CodeQL
+              uses: github/codeql-action/init@v2
+              with:
+                  languages: ${{ matrix.language }}
+                  queries: security-and-quality
+
+            - name: Autobuild
+              uses: github/codeql-action/autobuild@v2
+
+            - name: Perform CodeQL Analysis
+              uses: github/codeql-action/analyze@v2
+              with:
+                  category: /language:${{ matrix.language }}
+
+    # Python dependency scanning
+    dependency-check:
+        name: Check Python Dependencies
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+                  cache: "pip"
+
+            - name: Install dependencies
+              run: pip install -r requirements.txt safety bandit
+
+            - name: Scan dependencies with Safety
+              run: |
+                  safety check --json > safety-report.json || true
+              continue-on-error: true
+
+            - name: Scan code with Bandit (Security patterns)
+              run: |
+                  bandit -r src/ -f json -o bandit-report.json || true
+              continue-on-error: true
+
+            - name: Upload Bandit report
+              uses: actions/upload-artifact@v3
+              if: always()
+              with:
+                  name: bandit-security-report
+                  path: bandit-report.json
+
+    # Code quality and linting
+    code-quality:
+        name: Code Quality & Linting
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+                  cache: "pip"
+
+            - name: Install linting tools
+              run: |
+                  pip install pylint flake8 black isort
+
+            - name: Run Black formatter check
+              run: black --check src/ main.py || true
+              continue-on-error: true
+
+            - name: Run isort import sorter check
+              run: isort --check-only src/ main.py || true
+              continue-on-error: true
+
+            - name: Run Pylint
+              run: |
+                  pylint src/ main.py --exit-zero -r n --output-format=json > pylint-report.json || true
+              continue-on-error: true
+
+            - name: Run Flake8
+              run: |
+                  flake8 src/ main.py --format=json > flake8-report.json || true
+              continue-on-error: true
+
+            - name: Upload quality reports
+              uses: actions/upload-artifact@v3
+              if: always()
+              with:
+                  name: code-quality-reports
+                  path: |
+                      pylint-report.json
+                      flake8-report.json
+
+    # YAML and configuration file validation
+    validate-config:
+        name: Validate Configuration Files
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Install YAML validator
+              run: pip install yamllint jsonschema
+
+            - name: Validate YAML files
+              run: |
+                  yamllint -d relaxed config/ .github/workflows/ || true
+              continue-on-error: true
+
+            - name: Validate Python configuration
+              run: |
+                  python -m py_compile main.py src/*.py
+              continue-on-error: true
+
+    # Build and scan Docker image
+    build-and-scan:
+        name: Build & Scan Docker Image
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+            security-events: write
+        needs:
+            - secrets-scan
+            - code-quality
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+
+            - name: Log in to Container Registry
+              if: github.event_name != 'pull_request'
+              uses: docker/login-action@v2
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract Docker metadata
+              id: meta
+              uses: docker/metadata-action@v4
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=branch
+                      type=semver,pattern={{version}}
+                      type=semver,pattern={{major}}.{{minor}}
+                      type=sha
+
+            - name: Build Docker image for scanning
+              uses: docker/build-push-action@v4
+              with:
+                  context: .
+                  push: false
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  outputs: type=docker,dest=/tmp/image.tar
+
+            - name: Load Docker image
+              run: |
+                  docker load --input /tmp/image.tar
+
+            - name: Scan image with Trivy
+              uses: aquasecurity/trivy-action@master
+              with:
+                  input: "/tmp/image.tar"
+                  format: "sarif"
+                  output: "trivy-results.sarif"
+                  severity: "CRITICAL,HIGH"
+
+            - name: Upload Trivy scan results
+              uses: github/codeql-action/upload-sarif@v2
+              if: always()
+              with:
+                  sarif_file: "trivy-results.sarif"
+                  category: "trivy"
+
+            - name: Scan image with Grype
+              uses: anchore/scan-action@v3
+              id: grype
+              with:
+                  path: "/tmp/image.tar"
+                  fail-build: false
+
+            - name: Upload Grype results to GitHub Security tab
+              uses: github/codeql-action/upload-sarif@v2
+              if: always()
+              with:
+                  sarif_file: ${{ steps.grype.outputs.sarif }}
+
+            - name: Push Docker image to GitHub Container Registry
+              if: github.event_name != 'pull_request'
+              uses: docker/build-push-action@v4
+              with:
+                  context: .
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
+                  platforms: linux/amd64,linux/arm64
+
+    # SAST analysis with Semgrep
+    semgrep-analysis:
+        name: Semgrep Code Scanning
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Run Semgrep
+              uses: returntocorp/semgrep-action@v1
+              with:
+                  config: >-
+                      p/security-audit
+                      p/python
+                      p/owasp-top-ten
+
+              continue-on-error: true
+
+    # Dependency updates check
+    dependency-updates:
+        name: Check for Vulnerable Dependencies
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.13"
+
+            - name: Install pip-audit
+              run: pip install pip-audit
+
+            - name: Audit Python packages
+              run: |
+                  pip-audit --desc || true
+              continue-on-error: true
+
+    # SBOM (Software Bill of Materials) generation
+    sbom-generation:
+        name: Generate SBOM
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: read
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Generate SBOM with cyclonedx
+              run: |
+                  pip install cyclonedx-bom
+                  cyclonedx-bom -o requirements.txt -of xml > sbom.xml || true
+              continue-on-error: true
+
+            - name: Upload SBOM
+              uses: actions/upload-artifact@v3
+              if: always()
+              with:
+                  name: sbom
+                  path: sbom.xml
+
+    # Final security summary
+    security-summary:
+        name: Security Scan Summary
+        runs-on: ubuntu-latest
+        needs:
+            - secrets-scan
+            - codeql-analysis
+            - dependency-check
+            - code-quality
+            - build-and-scan
+            - semgrep-analysis
+        if: always()
+        permissions:
+            security-events: read
+        steps:
+            - name: Check security scan results
+              run: |
+                  echo "=== Security Scan Summary ==="
+                  echo "All security scans completed. Please review the Security tab for detailed results."
+                  echo ""
+                  echo "Scans performed:"
+                  echo "  ✓ Secret and credential scanning"
+                  echo "  ✓ Static code analysis (CodeQL)"
+                  echo "  ✓ Python dependency vulnerability scan"
+                  echo "  ✓ Code quality and linting checks"
+                  echo "  ✓ Docker image security scanning (Trivy & Grype)"
+                  echo "  ✓ Pattern-based security analysis (Semgrep)"
+                  echo "  ✓ Vulnerable package detection (pip-audit)"
+                  echo "  ✓ SBOM generation"

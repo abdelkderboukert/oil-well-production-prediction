@@ -1,3 +1,66 @@
-data/
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Development environments
+.vscode/
+.venv/
 virt*/
+venv/
+env/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.coverage/
+htmlcov/
+
+# Testing
+test*/
+.tox/
+
+# Build artifacts
+build/
+dist/
+*.egg
+
+# IDE and editor files
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Model and data cache (only include processed data)
+*.joblib
+models/
+plots/
+reports/
+
+# Docker and CI
+Dockerfile*
+docker-compose*
+.dockerignore
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation
+README.md
 README*.md
+docs/
+LICENSE
+
+# Environment files
+.env
+.env.local
+.env.*.local

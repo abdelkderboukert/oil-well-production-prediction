@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  oil-well-prediction:
+    # Build locally or use pre-built image from GitHub Container Registry
+    # For local build:
+    # build:
+    #   context: .
+    #   dockerfile: dockerfile
+
+    # For pre-built image from ghcr.io (recommended):
+    image: ghcr.io/abdelkderboukert/oil-well-production-prediction:main
+
+    container_name: oil-well-prediction-pipeline
+
+    # Restart policy
+    restart: "no"
+
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+    # Volume mounts for data persistence
+    volumes:
+      # Configuration
+      - ./config:/app/config:ro
+
+      # Data files
+      - ./data/raw:/app/data/raw:ro
+      - ./data/processed:/app/data/processed
+
+      # Output directories
+      - ./models:/app/models
+      - ./plots:/app/plots
+      - ./reports:/app/reports
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "1"
+          memory: 1G
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
