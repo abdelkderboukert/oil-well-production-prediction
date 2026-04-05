@@ -1,41 +1,44 @@
 # main.py
-import pandas as pd
+import logging
+from src.utils import load_config
+from src.ingestion import load_raw_data
+from src.preprocessing import clean_data
+from src.model import build_model
+from src.train import train_and_evaluate
 
-# Import your custom functions from the src folder
-from src.data_cleaning import clean_oil_well_data
-from src.model_training import train_production_model
+from src.visualize import plot_actual_vs_predicted, plot_feature_importance, plot_well_time_series
 
 def main():
-    print("=== Starting PFE Pipeline ===")
+    config = load_config()
+    raw_df = load_raw_data(config['data']['raw_path'])
+    clean_df = clean_data(raw_df)
     
-    # 1. Define paths and parameters
-    input_file = "data/raw_data.csv"
-    output_file = "data/clean_data.csv"
+    clean_df.to_csv(config['data']['processed_path'], index=False)
+    logging.info(f"Clean data saved to {config['data']['processed_path']}")
     
-    useless_columns = ['Well_Name', 'Operator', 'String_ID'] # Modify based on your data
-    date_col = 'Date' # Modify based on your data
-    target_col = 'Volume_Oil_Produced' # The column you want to predict
-    
-    # 2. Clean the Data
-    print("\n--- Step 1: Cleaning Data ---")
-    clean_df = clean_oil_well_data(
-        filepath=input_file, 
-        date_column=date_col, 
-        drop_cols=useless_columns
+    model = build_model(
+        n_estimators=config['model']['n_estimators'],
+        random_state=config['model']['random_state']
     )
+
+    trained_model, y_test, predictions = train_and_evaluate(
+        model=model,
+        df=clean_df,
+        features=config['pipeline']['feature_cols'],
+        target=config['pipeline']['target_col'],
+        test_size=config['model']['test_size'],
+        random_state=config['model']['random_state']
+    )
+
+    logging.info("Starting Visualizations...")
     
-    # Save the cleaned data so you can inspect it later
-    clean_df.to_csv(output_file)
-    print(f"Cleaned data saved to {output_file}")
+    plot_actual_vs_predicted(y_test, predictions)
+
+    plot_feature_importance(trained_model, config['pipeline']['feature_cols'])
     
-    # 3. Train the Prediction Model
-    print("\n--- Step 2: Training Prediction Model ---")
-    # Make sure the target column exists in your data before training
-    if target_col in clean_df.columns:
-        model = train_production_model(clean_df, target_column=target_col)
-    else:
-        print(f"Error: Target column '{target_col}' not found in the dataset.")
-        print(f"Available columns are: {list(clean_df.columns)}")
+    plot_well_time_series(clean_df, well_name='TFT-302', target_col=config['pipeline']['target_col'])
+    
+    logging.info("Pipeline execution completed successfully!")
 
 if __name__ == "__main__":
     main()
