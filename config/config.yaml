@@ -1,16 +1,7 @@
 data:
-<<<<<<< HEAD
   raw_path: "data/raw/data.csv"
   processed_path: "data/processed/clean_data.csv"
 
-pipeline:
-  target_col: "W_GAS"
-  feature_cols: ["HOURS", "WHP", "WHT", "WLP", "C2M", "C3", "C4", "C5P"]
-
-=======
-  processed_path: data/processed/clean_data.csv
-  raw_path: data/raw/data.csv
->>>>>>> development
 model:
   n_estimators: 150
   random_state: 42
