@@ -4,7 +4,7 @@ data:
 
 pipeline:
   target_col: "W_GAS"
-  feature_cols: ["HOURS", "WHP", "WHT", "WLP"]
+  feature_cols: ["HOURS", "WHP", "WHT", "WLP", "C2M", "C3", "C4", "C5P"]
 
 model:
   test_size: 0.2
