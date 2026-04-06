@@ -9,7 +9,7 @@ evaluation, and visualization of results.
 import logging
 import json
 import os
-from src.utils import load_config
+from src.utils import load_config , check_feature_leakage
 from src.ingestion import load_raw_data
 from src.preprocessing import clean_data
 from src.model import build_model, save_model
@@ -34,6 +34,8 @@ def main():
     # Data ingestion and preprocessing
     raw_df = load_raw_data(config['data']['raw_path'])
     clean_df = clean_data(raw_df)
+
+    check_feature_leakage(clean_df)
     
     # Save processed data
     clean_df.to_csv(config['data']['processed_path'], index=False)
@@ -49,7 +51,7 @@ def main():
     trained_model, y_test, predictions, metrics = train_and_evaluate(
         model=model,
         df=clean_df,
-        features=config['pipeline']['feature_cols'],
+        features=config['pipeline']['safe_features'],
         target=config['pipeline']['target_col'],
         test_size=config['model']['test_size'],
         random_state=config['model']['random_state']
