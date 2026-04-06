@@ -2,22 +2,23 @@ data:
   processed_path: data/processed/clean_data.csv
   raw_path: data/raw/data.csv
 model:
-  n_estimators: 50
+  n_estimators: 150
   random_state: 42
   test_size: 0.2
 pipeline:
   feature_cols:
-  - HOURS
-  - WHP
-  - WHT
-  - WLP
-  - C2M
-  - C3
-  - C4
-  - C5P
+    - HOURS
+    - WHP
+    - WHT
+    - WLP
+    - C2M
+    - C3
+    - C4
+    - C5P
   safe_features:
-  - HOURS
-  - WHP
-  - WHT
-  - WLP
+    - HOURS
+    - WHP
+    - WHT
+    - WLP
+    - H2O
   target_col: W_GAS
