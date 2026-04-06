@@ -69,7 +69,16 @@ def train_and_evaluate(model, df, features, target, test_size, random_state):
     }
     
     logging.info("--- EVALUATION RESULTS ---")
+    # for key, value in metrics.items():
+    #     logging.info(f"{key}: {value}")
+    print(f"\n{'METRIC':<30} | {'VALUE':<25}")
+    print("-" * 60)
     for key, value in metrics.items():
-        logging.info(f"{key}: {value}")
+        # Handle strings vs numbers for alignment
+        if isinstance(value, float):
+            print(f"{key:<30} | {value:>25.4f}")
+        else:
+            print(f"{key:<30} | {str(value):>25}")
+    print("-" * 60 + "\n")
     
     return model, y_test, predictions, metrics

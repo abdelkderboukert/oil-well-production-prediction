@@ -20,7 +20,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+<<<<<<< HEAD
 SECRET_KEY = 'django-insecure-u0(75!2buxrwdes2n$$)kw8ib(tu!14$nxtb@4hnnp82+=-zc+'
+=======
+SECRET_KEY = 'django-insecure-*td^$r8t)to^c$n#834%tc^9y!4nm34(vj&3a0cdx@5&@c+a4a'
+>>>>>>> development
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -31,12 +35,22 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+<<<<<<< HEAD
+=======
+    'jazzmin',
+>>>>>>> development
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+<<<<<<< HEAD
+=======
+    'api.apps.ApiConfig',
+    'rest_framework',
+    'corsheaders',
+>>>>>>> development
 ]
 
 MIDDLEWARE = [
@@ -47,6 +61,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+<<<<<<< HEAD
+=======
+    'corsheaders.middleware.CorsMiddleware',
+>>>>>>> development
 ]
 
 ROOT_URLCONF = 'core.urls'
