@@ -92,8 +92,8 @@
 #     return model, y_test_real.flatten(), predictions_real.flatten(), metrics
 
 """
-Model Training and Evaluation Module
-Handles scaling, sequence generation, training, and evaluation for BOTH models.
+Model Training and Evaluation Module (Deep Learning)
+Handles scaling, 3D sequence generation, training, and evaluation.
 """
 
 import numpy as np
@@ -168,7 +168,7 @@ def train_and_evaluate_rf(df, features, target, test_size, random_state):
     y = df[target]
     
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
+        X, y, test_size=test_size, random_state=random_state, shuffle=False
     )
     
     model = build_rf_model(random_state=random_state)
