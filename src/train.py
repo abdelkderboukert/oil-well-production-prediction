@@ -1,11 +1,11 @@
 """
-Model Training and Evaluation Module
-
-Handles model training on training data and comprehensive evaluation using
-multiple performance metrics.
+Model Training and Evaluation Module (Deep Learning)
+Handles scaling, 3D sequence generation, training, and evaluation.
 """
 
 import logging
+import os
+from src.model import build_model
 
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -45,7 +45,7 @@ def train_and_evaluate(model, df, features, target, test_size, random_state):
 
     # Split data maintaining temporal coherence
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state
+        X, y, test_size=test_size, random_state=random_state, shuffle=False
     )
 
     logging.info("Training the model...")
@@ -62,7 +62,8 @@ def train_and_evaluate(model, df, features, target, test_size, random_state):
 
     # Aggregate metrics into a structured dictionary
     metrics = {
-        "Model_Type": "RandomForestRegressor",
+        "Model_Type": "LSTM Neural Network",
+        "Time_Steps_Window": time_steps,
         "R2_Score": round(r2, 4),
         "Mean_Absolute_Error_MAE": round(mae, 4),
         "Mean_Squared_Error_MSE": round(mse, 4),
@@ -70,8 +71,6 @@ def train_and_evaluate(model, df, features, target, test_size, random_state):
     }
 
     logging.info("--- EVALUATION RESULTS ---")
-    # for key, value in metrics.items():
-    #     logging.info(f"{key}: {value}")
     print(f"\n{'METRIC':<30} | {'VALUE':<25}")
     print("-" * 60)
     for key, value in metrics.items():

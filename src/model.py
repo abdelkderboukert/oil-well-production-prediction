@@ -1,8 +1,6 @@
 """
-Model Management Module
-
-Handles creation, initialization, and persistence of machine learning models.
-Utilizes scikit-learn's Random Forest regressor for production prediction tasks.
+Model Management Module (Deep Learning)
+Handles creation, initialization, and persistence of the LSTM model.
 """
 
 import logging

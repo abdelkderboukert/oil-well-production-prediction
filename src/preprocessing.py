@@ -2,7 +2,7 @@
 Data Preprocessing Module
 
 Performs comprehensive data cleaning and transformation including handling missing
-values, date formatting, and removal of invalid data points.
+values, date formatting, removal of invalid data points, and handling time-series gaps.
 """
 
 import logging
@@ -18,8 +18,8 @@ def clean_data(df):
     Processing steps:
     1. Remove irrelevant columns
     2. Convert date strings to datetime objects
-    3. Sort records chronologically by well and date
-    4. Replace negative values with NaN (physically invalid)
+    3. Replace negative values with NaN (physically invalid)
+    4. Resample dates to continuous daily frequency (handling gaps)
     5. Impute missing values using forward-fill and back-fill by well
     6. Fill remaining NaN values with 0
 
