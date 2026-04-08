@@ -1,112 +1,109 @@
 name: ML Pipeline - Build & Test
 
 on:
-    push:
-        branches:
-            - development
-            - main
-    pull_request:
-        branches:
-            - development
-            - main
+  push:
+    branches:
+      - development
+      - main
+  pull_request:
+    branches:
+      - development
+      - main
 
 env:
-    PYTHON_VERSION: 3.13
+  PYTHON_VERSION: 3.13
 
 jobs:
-    lint-and-format:
-        name: Code Linting & Format Check
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  lint-and-format:
+    name: Code Linting & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up Python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: ${{ env.PYTHON_VERSION }}
-                  cache: "pip"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
-            - name: Install linting tools
-              run: |
-                  pip install flake8 black isort
+      - name: Install linting tools
+        run: |
+          pip install flake8 black isort
 
-            - name: Check code formatting with Black
-              run: black --check src/ main.py
-              continue-on-error: true
+      - name: Check code formatting with Black
+        run: black --check src/ main.py
 
-            - name: Check import ordering with isort
-              run: isort --check-only src/ main.py
-              continue-on-error: true
+      - name: Check import ordering with isort
+        run: isort --check-only src/ main.py
 
-            - name: Lint with Flake8
-              run: |
-                  flake8 src/ main.py --count --select=E9,F63,F7,F82 --show-source --statistics
-                  flake8 src/ main.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Lint with Flake8
+        run: |
+          flake8 src/ main.py --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 src/ main.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    unit-tests:
-        name: Unit Tests
-        runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                python-version: ["3.11", "3.12", "3.13"]
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v4
-              with:
-                  python-version: ${{ matrix.python-version }}
-                  cache: "pip"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
 
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements.txt
-                  pip install pytest pytest-cov
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
 
-            - name: Run unit tests
-              run: |
-                  pytest tests/ -v --cov=src --cov-report=xml --cov-report=html || true
-              continue-on-error: true
+      - name: Run unit tests
+        run: |
+          pytest tests/ -v --cov=src --cov-report=xml --cov-report=html
 
-            - name: Upload coverage reports
-              uses: codecov/codecov-action@v3
-              if: always()
-              with:
-                  files: ./coverage.xml
-                  flags: unittests
-                  name: codecov-umbrella
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
 
-    build:
-        name: Build Application
-        runs-on: ubuntu-latest
-        needs: [lint-and-format, unit-tests]
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up Python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: ${{ env.PYTHON_VERSION }}
-                  cache: "pip"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
 
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-            - name: Validate Python syntax
-              run: python -m py_compile main.py src/*.py
+      - name: Validate Python syntax
+        run: python -m py_compile main.py src/*.py
 
-            - name: Verify configuration files
-              run: |
-                  python -c "import yaml; yaml.safe_load(open('config/config.yaml'))"
+      - name: Verify configuration files
+        run: |
+          python -c "import yaml; yaml.safe_load(open('config/config.yaml'))"
 
-            - name: Build artifact (if applicable)
-              run: |
-                  mkdir -p build/
-                  cp -r src/ main.py requirements.txt build/
-                  echo "Build completed successfully"
+      - name: Build artifact (if applicable)
+        run: |
+          mkdir -p build/
+          cp -r src/ main.py requirements.txt build/
+          echo "Build completed successfully"

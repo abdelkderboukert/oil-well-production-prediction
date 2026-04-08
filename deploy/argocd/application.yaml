@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oil-well-production-prediction
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/abdelkderboukert/oil-well-production-prediction
+    targetRevision: HEAD
+    path: deploy/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: oil-well-production-prediction
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

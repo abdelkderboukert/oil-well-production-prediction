@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oil-well-production-prediction
+  labels:
+    app: oil-well-production-prediction
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oil-well-production-prediction
+  template:
+    metadata:
+      labels:
+        app: oil-well-production-prediction
+    spec:
+      containers:
+        - name: oil-well-production-prediction
+          image: ghcr.io/abdelkderboukert/oil-well-production-prediction:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
