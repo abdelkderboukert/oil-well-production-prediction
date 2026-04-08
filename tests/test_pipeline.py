@@ -77,6 +77,36 @@ class TestDataPreprocessing:
         cleaned = clean_data(df)
         assert pd.isna(cleaned.loc[0, 'HOURS'])
 
+    def test_clean_data_handles_date_gaps_and_imputation(self):
+        """Test that date gaps are resampled and missing values are forward-filled."""
+        # Create data with a missing day (Jan 2nd is missing)
+        data = {
+            'DATE': ['2023-01-01', '2023-01-03'], 
+            'WELL': ['TFT-301', 'TFT-301'],
+            'HOURS': [24.0, 20.0],
+            'WHP': [150.0, 140.0],
+            'WHT': [60.0, 55.0],
+            'WLP': [40.0, 35.0],
+            'W_GAS': [1000.0, 900.0]
+        }
+        df = pd.DataFrame(data)
+        
+        # Run the cleaning pipeline
+        cleaned = clean_data(df)
+        
+        # 1. Assert that the missing day (Jan 2) was automatically created
+        assert len(cleaned) == 3, "Resampling failed: The missing day was not created."
+        
+        # Convert dates back to strings to easily check them
+        dates = cleaned['DATE'].dt.strftime('%Y-%m-%d').tolist()
+        assert '2023-01-02' in dates, "Jan 2nd was not found in the resampled data."
+        
+        # 2. Assert that the values for Jan 2nd were forward-filled from Jan 1st
+        jan_2_data = cleaned[cleaned['DATE'] == '2023-01-02'].iloc[0]
+        assert jan_2_data['WHP'] == 150.0, "Forward-fill failed for WHP."
+        assert jan_2_data['WHT'] == 60.0, "Forward-fill failed for WHT."
+        assert jan_2_data['WELL'] == 'TFT-301', "Well name was lost during resampling."
+
 
 class TestModelBuild:
     """Test cases for model building."""

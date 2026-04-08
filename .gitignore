@@ -72,6 +72,7 @@ models/.gitkeep
 *.pickle
 
 # Project specific
+data/
 plots/
 reports/
 data/raw/*
