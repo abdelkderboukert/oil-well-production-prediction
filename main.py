@@ -68,16 +68,20 @@ import logging
 import os
 from src.utils import load_config, check_feature_leakage
 from src.ingestion import load_raw_data
-from src.preprocessing import clean_data
-from src.train import train_and_evaluate_lstm, train_and_evaluate_rf
-from src.model import save_lstm_model, save_rf_model
+from src.preprocessing import clean_data , prepare_for_lstm
+from src.model import build_model, save_model
+from src.train import train_and_evaluate
+from src.visualize import plot_actual_vs_predicted, plot_feature_importance, plot_well_time_series
+
 
 def main():
     config = load_config()
     
     # 1. Data Processing
     raw_df = load_raw_data(config['data']['raw_path'])
-    clean_df = clean_data(raw_df)
+    df = clean_data(raw_df)
+    clean_df = prepare_for_lstm(df)
+
     check_feature_leakage(clean_df)
     
     clean_df.to_csv(config['data']['processed_path'], index=False)

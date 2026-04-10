@@ -69,11 +69,19 @@ def clean_data(df):
     # Forward fill (copy yesterday's data to today), then backward fill if needed
     df[cols_to_fill] = df.groupby('WELL')[cols_to_fill].ffill().bfill()
     
-    # Fill any remaining NaN values with 0
-    df_clean = df.fillna(0)
+    # # Fill any remaining NaN values with 0
+    # df_clean = df.fillna(0)
     
     # Sort data chronologically by well and date just to be absolutely certain
     df_clean = df_clean.sort_values(by=['WELL', 'DATE']).reset_index(drop=True)
     
     logging.info("Preprocessing complete.")
-    return df_clean
+    return df
+
+def prepare_for_lstm(df):
+    """
+    Step 2: Model-specific preparation.
+    LSTMs cannot handle NaNs, so we fill them with 0 here.
+    """
+    logging.info("Prepare for LSTM : Fill any remaining NaN values with 0")
+    return df.fillna(0)
