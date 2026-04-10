@@ -74,7 +74,7 @@ models/.gitkeep
 # Project specific
 plots/
 reports/
-data/raw/*
+# data/raw/*
 !data/raw/.gitkeep
 data/processed/
 logs/
