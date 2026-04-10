@@ -11,7 +11,7 @@ import json
 import os
 from src.utils import load_config , check_feature_leakage
 from src.ingestion import load_raw_data
-from src.preprocessing import clean_data
+from src.preprocessing import clean_data , prepare_for_lstm
 from src.model import build_model, save_model
 from src.train import train_and_evaluate
 from src.visualize import plot_actual_vs_predicted, plot_feature_importance, plot_well_time_series
@@ -33,7 +33,8 @@ def main():
     
     # Data ingestion and preprocessing
     raw_df = load_raw_data(config['data']['raw_path'])
-    clean_df = clean_data(raw_df)
+    df = clean_data(raw_df)
+    clean_df = prepare_for_lstm(df)
 
     check_feature_leakage(clean_df)
     

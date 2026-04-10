@@ -75,6 +75,7 @@ class TestDataPreprocessing:
         }
         df = pd.DataFrame(data)
         cleaned = clean_data(df)
+        print(cleaned)
         assert pd.isna(cleaned.loc[0, 'HOURS'])
 
 

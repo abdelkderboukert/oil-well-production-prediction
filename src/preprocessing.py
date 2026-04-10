@@ -53,8 +53,16 @@ def clean_data(df):
     cols_to_fill = df.columns.drop(['WELL', 'DATE'])
     df[cols_to_fill] = df.groupby('WELL')[cols_to_fill].ffill().bfill()
     
-    # Fill any remaining NaN values with 0
-    df_clean = df.fillna(0)
+    # # Fill any remaining NaN values with 0
+    # df_clean = df.fillna(0)
     
     logging.info("Preprocessing complete.")
-    return df_clean
+    return df
+
+def prepare_for_lstm(df):
+    """
+    Step 2: Model-specific preparation.
+    LSTMs cannot handle NaNs, so we fill them with 0 here.
+    """
+    logging.info("Prepare for LSTM : Fill any remaining NaN values with 0")
+    return df.fillna(0)
