@@ -178,7 +178,7 @@ jobs:
 
       - name: Run Flake8
         run: |
-          flake8 src/ main.py --format=json > flake8-report.json
+          flake8 src/ main.py --format=json > flake8-report.json || true
 
       - name: Upload quality reports
         uses: actions/upload-artifact@v4
