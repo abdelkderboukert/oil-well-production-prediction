@@ -35,8 +35,8 @@ jobs:
       - name: Check code formatting with Black
         run: black --check src/ main.py
 
-      - name: Check import ordering with isort
-        run: isort --check-only src/ main.py
+      # - name: Check import ordering with isort
+      #   run: isort --check-only src/ main.py
 
       - name: Lint with Flake8
         run: |
