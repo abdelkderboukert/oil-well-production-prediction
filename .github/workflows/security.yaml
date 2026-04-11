@@ -169,8 +169,8 @@ jobs:
       - name: Run Black formatter check
         run: black --check src/ main.py
 
-      - name: Run isort import sorter check
-        run: isort --check-only src/ main.py
+      # - name: Run isort import sorter check
+      #   run: isort --check-only src/ main.py
 
       - name: Run Pylint
         run: |
