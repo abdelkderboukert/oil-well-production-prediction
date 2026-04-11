@@ -66,61 +66,78 @@ Trains and saves both the LSTM (Forecaster) and Random Forest (Anomaly Detector)
 import json
 import logging
 import os
-from src.utils import load_config, check_feature_leakage
+from src.utils import load_config , check_feature_leakage
 from src.ingestion import load_raw_data
-from src.preprocessing import clean_data , prepare_for_lstm
 from src.model import build_model, save_model
+from src.preprocessing import clean_data, prepare_for_lstm
 from src.train import train_and_evaluate
-from src.visualize import plot_actual_vs_predicted, plot_feature_importance, plot_well_time_series
+from src.utils import check_feature_leakage, load_config
+from src.visualize import (
+    plot_actual_vs_predicted,
+    plot_feature_importance,
+    plot_well_time_series,
+)
 
 
 def main():
+    """
+    Execute the complete production prediction pipeline.
+    
+    Workflow:
+    1. Load configuration from YAML file
+    2. Ingest and clean raw data
+    3. Build and train Random Forest model
+    4. Evaluate model performance and generate metrics
+    5. Generate visualization reports
+    """
+    # Load configuration
     config = load_config()
     
-    # 1. Data Processing
+    # Data ingestion and preprocessing
     raw_df = load_raw_data(config['data']['raw_path'])
     df = clean_data(raw_df)
     clean_df = prepare_for_lstm(df)
 
     check_feature_leakage(clean_df)
     
+    # Save processed data
     clean_df.to_csv(config['data']['processed_path'], index=False)
-    logging.info("Clean data saved to processed folder.")
+    logging.info(f"Clean data saved to {config['data']['processed_path']}")
     
-    features = config['pipeline']['safe_features']
-    target = config['pipeline']['target_col']
-    test_size = config['model']['test_size']
-    random_state = config['model']['random_state']
-
-    all_metrics = {}
-
-    # 2. Train and Save LSTM (The Forecaster)
-    TIME_STEPS = 7
-    lstm_model, lstm_y, lstm_pred, lstm_metrics = train_and_evaluate_lstm(
-        clean_df, features, target, TIME_STEPS, test_size, random_state
+    # Model initialization
+    model = build_model(
+        n_estimators=config['model']['n_estimators'],
+        random_state=config['model']['random_state']
     )
-    save_lstm_model(lstm_model, filepath="models/production_model.keras")
-    all_metrics["LSTM"] = lstm_metrics
 
-    # 3. Train and Save Random Forest (The Anomaly Detector)
-    rf_model, rf_y, rf_pred, rf_metrics = train_and_evaluate_rf(
-        clean_df, features, target, test_size, random_state
+    # Train model and compute evaluation metrics
+    trained_model, y_test, predictions, metrics = train_and_evaluate(
+        model=model,
+        df=clean_df,
+        features=config['pipeline']['safe_features'],
+        target=config['pipeline']['target_col'],
+        test_size=config['model']['test_size'],
+        random_state=config['model']['random_state']
     )
-    save_rf_model(rf_model, filepath="models/rf_model.joblib")
-    all_metrics["Random_Forest"] = rf_metrics
-
-    # 4. Save Combined Metrics
+    
+    # Save trained model
+    save_model(trained_model, filepath="models/production_model.joblib")
+    
+    # Generate and save performance metrics report
     os.makedirs("reports", exist_ok=True)
-    with open("reports/dual_model_metrics.json", "w") as f:
-        json.dump(all_metrics, f, indent=4)
-        
-    logging.info("\n--- FINAL RESULTS ---")
-    for model_name, metrics in all_metrics.items():
-        print(f"\n{model_name}:")
-        for k, v in metrics.items():
-            print(f"  {k}: {v}")
+    report_path = "reports/model_metrics.json"
+    with open(report_path, "w") as f:
+        json.dump(metrics, f, indent=4)
+    logging.info(f"Metrics report saved to {report_path}")
+
+    # Generate visualization outputs
+    logging.info("Generating visualizations...")
+    plot_actual_vs_predicted(y_test, predictions)
+    plot_feature_importance(trained_model, config['pipeline']['feature_cols'])
+    plot_well_time_series(clean_df, well_name='TFT-302', target_col=config['pipeline']['target_col'])
 
     logging.info("Dual Pipeline execution completed successfully! Both models are saved.")
+
 
 
 if __name__ == "__main__":
