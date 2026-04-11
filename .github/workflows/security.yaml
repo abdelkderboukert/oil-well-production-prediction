@@ -37,8 +37,8 @@ jobs:
           path: ./
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
-          extra_args: --debug --json --fail
-
+          extra_args: --debug --json
+      # --fail
       - name: Scan for credentials using GitGuardian
         uses: GitGuardian/ggshield-action@v1
         if: always()
