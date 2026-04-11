@@ -8,13 +8,14 @@ feature importance visualization.
 import matplotlib
 import matplotlib.pyplot as plt
 
-matplotlib.use("Agg")  # Use non-interactive backend for server environments
 import logging
 import os
 
 import numpy as np
-import pandas as pd
 import seaborn as sns
+
+
+matplotlib.use("Agg")  # Use non-interactive backend for server environments
 
 # Create output directory for visualizations
 os.makedirs("plots", exist_ok=True)
