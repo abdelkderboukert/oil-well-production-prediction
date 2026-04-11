@@ -9,6 +9,7 @@ argon2-cffi-bindings==25.1.0
 arrow==1.4.0
 asgiref==3.7.2
 astroid==4.0.4
+astroid==4.0.4
 asttokens==3.0.1
 astunparse==1.6.3
 async-lru==2.3.0
@@ -50,6 +51,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
 executing==2.2.1
 fastjsonschema==2.21.2
+flake8==7.3.0
 flatbuffers==25.12.19
 fonttools==4.62.1
 fqdn==1.5.1
@@ -98,6 +100,7 @@ markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 matplotlib==3.10.8
 matplotlib-inline==0.2.1
+mccabe==0.7.0
 <<<<<<< HEAD
 mccabe==0.7.0
 mdurl==0.1.2
@@ -110,6 +113,7 @@ narwhals==2.19.0
 mdurl==0.1.2
 mistune==3.2.0
 ml_dtypes==0.5.4
+mypy_extensions==1.1.0
 namex==0.1.0
 >>>>>>> 7e0ae11 (update the reuirements.txt)
 nbclient==0.10.4
@@ -142,17 +146,21 @@ pure_eval==0.2.3
 pyarrow==23.0.1
 pycares==4.4.0
 pycodestyle==2.14.0
+pycodestyle==2.14.0
 pycparser==3.0
+pyflakes==3.4.0
 pydeck==0.9.1
 pyflakes==3.4.0
 Pygments==2.20.0
 PyJWT==2.8.0
+pylint==4.0.5
 pylint==4.0.5
 pyparsing==3.3.2
 pytest==9.0.3
 pytest-cov==7.1.0
 python-dateutil==2.9.0.post0
 python-json-logger==4.1.0
+pytokens==0.4.1
 pytokens==0.4.1
 pytz==2024.1
 PyYAML==6.0.3
@@ -185,6 +193,7 @@ termcolor==3.3.0
 terminado==0.18.1
 threadpoolctl==3.6.0
 tinycss2==1.4.0
+tomlkit==0.14.0
 toml==0.10.2
 tomlkit==0.14.0
 tornado==6.5.5
