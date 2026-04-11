@@ -7,6 +7,7 @@ argon2-cffi==25.1.0
 argon2-cffi-bindings==25.1.0
 arrow==1.4.0
 asgiref==3.7.2
+astroid==4.0.4
 asttokens==3.0.1
 astunparse==1.6.3
 async-lru==2.3.0
@@ -15,6 +16,7 @@ attrs==26.1.0
 babel==2.18.0
 beautifulsoup4==4.14.3
 billiard==4.2.0
+black==26.3.1
 bleach==6.3.0
 celery==5.4.0
 certifi==2026.2.25
@@ -33,6 +35,7 @@ debugpy==1.8.20
 decorator==5.2.1
 defusedxml==0.7.1
 deprecation==2.1.0
+dill==0.4.1
 Django==5.0.3
 django-celery==3.1.17
 django-cors-headers==4.3.1
@@ -44,6 +47,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
 executing==2.2.1
 fastjsonschema==2.21.2
+flake8==7.3.0
 flatbuffers==25.12.19
 fonttools==4.62.1
 fqdn==1.5.1
@@ -62,6 +66,7 @@ ipython==9.12.0
 ipython_pygments_lexers==1.1.1
 ipywidgets==8.1.8
 isoduration==20.11.0
+isort==8.0.1
 jedi==0.19.2
 Jinja2==3.1.6
 joblib==1.5.3
@@ -91,9 +96,11 @@ markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 matplotlib==3.10.8
 matplotlib-inline==0.2.1
+mccabe==0.7.0
 mdurl==0.1.2
 mistune==3.2.0
 ml_dtypes==0.5.4
+mypy_extensions==1.1.0
 namex==0.1.0
 nbclient==0.10.4
 nbconvert==7.17.0
@@ -111,6 +118,7 @@ packaging==26.0
 pandas==3.0.2
 pandocfilters==1.5.1
 parso==0.8.6
+pathspec==1.0.4
 pexpect==4.9.0
 pillow==12.2.0
 platformdirs==4.9.4
@@ -122,14 +130,18 @@ psutil==7.2.2
 ptyprocess==0.7.0
 pure_eval==0.2.3
 pycares==4.4.0
+pycodestyle==2.14.0
 pycparser==3.0
+pyflakes==3.4.0
 Pygments==2.20.0
 PyJWT==2.8.0
+pylint==4.0.5
 pyparsing==3.3.2
 pytest==9.0.3
 pytest-cov==7.1.0
 python-dateutil==2.9.0.post0
 python-json-logger==4.1.0
+pytokens==0.4.1
 pytz==2024.1
 PyYAML==6.0.3
 pyzmq==27.1.0
@@ -155,6 +167,7 @@ termcolor==3.3.0
 terminado==0.18.1
 threadpoolctl==3.6.0
 tinycss2==1.4.0
+tomlkit==0.14.0
 tornado==6.5.5
 traitlets==5.14.3
 typing_extensions==4.15.0
