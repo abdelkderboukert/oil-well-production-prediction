@@ -153,6 +153,10 @@ def train_and_evaluate_lstm(df, features, target, time_steps, test_size, random_
     }
     return model, y_test_real, predictions_real, metrics
 
+import numpy as np
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+
 
 # ==========================================
 # 🌲 2. RANDOM FOREST TRAINING LOGIC (2D)
