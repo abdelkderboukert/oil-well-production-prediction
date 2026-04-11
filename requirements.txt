@@ -47,6 +47,7 @@ djangorestframework==3.14.0
 djangorestframework-simplejwt==5.3.1
 executing==2.2.1
 fastjsonschema==2.21.2
+flake8==7.3.0
 flatbuffers==25.12.19
 fonttools==4.62.1
 fqdn==1.5.1
@@ -95,9 +96,11 @@ markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 matplotlib==3.10.8
 matplotlib-inline==0.2.1
+mccabe==0.7.0
 mdurl==0.1.2
 mistune==3.2.0
 ml_dtypes==0.5.4
+mypy_extensions==1.1.0
 namex==0.1.0
 nbclient==0.10.4
 nbconvert==7.17.0
