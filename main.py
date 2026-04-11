@@ -15,11 +15,8 @@ from src.model import build_model, save_model
 from src.preprocessing import clean_data, prepare_for_lstm
 from src.train import train_and_evaluate
 from src.utils import check_feature_leakage, load_config
-from src.visualize import (
-    plot_actual_vs_predicted,
-    plot_feature_importance,
-    plot_well_time_series,
-)
+from src.visualize import (plot_actual_vs_predicted, plot_feature_importance,
+                           plot_well_time_series)
 
 
 def main():
