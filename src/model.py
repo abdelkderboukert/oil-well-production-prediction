@@ -47,8 +47,8 @@
 #     logging.info(f"LSTM Model successfully saved to {filepath}")
 
 """
-Model Management Module (Deep Learning)
-Handles creation, initialization, and persistence of the LSTM model.
+Model Management Module
+Handles creation, initialization, and persistence of both LSTM and Random Forest models.
 """
 
 import tensorflow as tf
