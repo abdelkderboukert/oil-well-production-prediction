@@ -96,11 +96,15 @@ Model Training and Evaluation Module
 Handles scaling, sequence generation, training, and evaluation for BOTH models.
 """
 
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error
+import joblib
 import logging
 import os
 from src.model import build_lstm_model, build_rf_model
-import numpy as np
-import joblib
 
 # ==========================================
 # 🧠 1. LSTM TRAINING LOGIC (3D Sequences)
