@@ -105,8 +105,6 @@ import joblib
 import logging
 import os
 from src.model import build_lstm_model, build_rf_model
-import numpy as np
-import joblib
 
 # ==========================================
 # 🧠 1. LSTM TRAINING LOGIC (3D Sequences)
