@@ -37,6 +37,7 @@ class WellProduction(models.Model):
     # Your specific chemical components (NGLs/Compositions)
     c3 = models.DecimalField("Propane", max_digits=10, decimal_places=4, null=True)
     c4 = models.DecimalField("Butane", max_digits=10, decimal_places=4, null=True)
+    tag = models.BooleanField(default=False)
     
     class Meta:
         unique_together = ('well', 'date') # Prevents double-entry for the same day
