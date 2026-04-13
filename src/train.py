@@ -1,99 +1,6 @@
-# """
-# Model Training and Evaluation Module (Deep Learning)
-# Handles scaling, 3D sequence generation, training, and evaluation.
-# """
-
-# import numpy as np
-# import pandas as pd
-# from sklearn.model_selection import train_test_split
-# from sklearn.preprocessing import MinMaxScaler
-# from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error
-# import joblib
-# import logging
-# import os
-# from src.model import build_model
-
-# def create_sequences(df, features, target, time_steps):
-#     """Creates 3D time windows safely grouped by WELL."""
-#     X, y = [], []
-    
-#     # Group by well to ensure dates from different wells never mix!
-#     for well_name, group in df.groupby('WELL'):
-#         group_features = group[features].values
-#         group_target = group[target].values
-        
-#         for i in range(len(group) - time_steps):
-#             X.append(group_features[i : i + time_steps])
-#             y.append(group_target[i + time_steps])
-            
-#     return np.array(X), np.array(y)
-
-# def train_and_evaluate(df, features, target, time_steps, test_size, random_state):
-#     logging.info("Scaling features and target to (0, 1)...")
-    
-#     # Initialize and apply scalers
-#     feature_scaler = MinMaxScaler()
-#     target_scaler = MinMaxScaler()
-    
-#     df_scaled = df.copy()
-#     df_scaled[features] = feature_scaler.fit_transform(df[features])
-#     df_scaled[[target]] = target_scaler.fit_transform(df[[target]])
-    
-#     # Save scalers for your future Next.js GUI
-#     os.makedirs("models", exist_ok=True)
-#     joblib.dump(feature_scaler, "models/feature_scaler.joblib")
-#     joblib.dump(target_scaler, "models/target_scaler.joblib")
-#     logging.info("Scalers saved to models/ folder.")
-    
-#     # Create Time Windows
-#     logging.info(f"Creating time sequences (Window={time_steps} days)...")
-#     X, y = create_sequences(df_scaled, features, target, time_steps)
-#     logging.info(f"Generated {X.shape[0]} valid time sequences.")
-    
-#     # Split data (shuffle=False keeps chronological order for time-series evaluation)
-#     X_train, X_test, y_train, y_test = train_test_split(
-#         X, y, test_size=test_size, random_state=random_state, shuffle=False
-#     )
-    
-#     # Build and Train the LSTM
-#     model = build_model(time_steps=time_steps, n_features=len(features))
-    
-#     logging.info("Training LSTM model (this might take a minute)...")
-#     # Using validation_split to monitor overfitting during training
-#     model.fit(X_train, y_train, epochs=15, batch_size=64, validation_split=0.1, verbose=1)
-    
-#     logging.info("Evaluating model...")
-#     predictions_scaled = model.predict(X_test)
-    
-#     # Inverse transform to get real gas production numbers back
-#     y_test_real = target_scaler.inverse_transform(y_test.reshape(-1, 1))
-#     predictions_real = target_scaler.inverse_transform(predictions_scaled)
-    
-#     # Calculate Metrics
-#     mae = mean_absolute_error(y_test_real, predictions_real)
-#     mse = mean_squared_error(y_test_real, predictions_real)
-#     rmse = np.sqrt(mse)
-#     r2 = r2_score(y_test_real, predictions_real)
-    
-#     metrics = {
-#         "Model_Type": "LSTM Neural Network",
-#         "Time_Steps_Window": time_steps,
-#         "R2_Score": round(r2, 4),
-#         "Mean_Absolute_Error_MAE": round(mae, 4),
-#         "Root_Mean_Squared_Error_RMSE": round(rmse, 4)
-#     }
-    
-#     logging.info("--- EVALUATION RESULTS ---")
-#     print(f"\n{'METRIC':<30} | {'VALUE':<25}")
-#     print("-" * 60)
-#     for key, value in metrics.items():
-#         print(f"{key:<30} | {value:<25}")
-        
-#     return model, y_test_real.flatten(), predictions_real.flatten(), metrics
-
 """
-Model Training and Evaluation Module
-Handles scaling, sequence generation, training, and evaluation for BOTH models.
+Model Training and Evaluation Module (Multi-Output)
+Handles scaling, 3D sequence generation, training, and evaluation for multiple targets.
 """
 
 import numpy as np
@@ -106,40 +13,77 @@ import logging
 import os
 from src.model import build_lstm_model, build_rf_model
 
-# ==========================================
-# 🧠 1. LSTM TRAINING LOGIC (3D Sequences)
-# ==========================================
-def create_sequences(df, features, target, time_steps):
+def create_sequences(df, features, targets, time_steps):
+    """Creates 3D time windows safely grouped by WELL for multiple targets."""
     X, y = [], []
     for well_name, group in df.groupby('WELL'):
         group_features = group[features].values
-        group_target = group[target].values
+        group_targets = group[targets].values
         for i in range(len(group) - time_steps):
             X.append(group_features[i : i + time_steps])
-            y.append(group_target[i + time_steps])
+            y.append(group_targets[i + time_steps])
     return np.array(X), np.array(y)
 
 # ==========================================
-# 🌲 2. RANDOM FOREST TRAINING LOGIC (2D)
+# 🧠 1. LSTM TRAINING LOGIC
 # ==========================================
-def train_and_evaluate_rf(df, features, target, test_size, random_state):
+def train_and_evaluate_lstm(df, features, targets, time_steps, test_size, random_state):
+    logging.info("--- STARTING LSTM (FORECASTER) PIPELINE ---")
+    
+    feature_scaler = MinMaxScaler()
+    target_scaler = MinMaxScaler()
+    
+    df_scaled = df.copy()
+    df_scaled[features] = feature_scaler.fit_transform(df[features])
+    df_scaled[targets] = target_scaler.fit_transform(df[targets])
+    
+    os.makedirs("models", exist_ok=True)
+    joblib.dump(feature_scaler, "models/feature_scaler.joblib")
+    joblib.dump(target_scaler, "models/target_scaler.joblib")
+    
+    X, y = create_sequences(df_scaled, features, targets, time_steps)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, shuffle=False
+    )
+    
+    model = build_lstm_model(time_steps=time_steps, n_features=len(features), n_outputs=len(targets))
+    model.fit(X_train, y_train, epochs=15, batch_size=64, validation_split=0.1, verbose=1)
+    
+    predictions_scaled = model.predict(X_test)
+    
+    # Notice: No reshape or flatten! Works for 6 columns perfectly.
+    y_test_real = target_scaler.inverse_transform(y_test)
+    predictions_real = target_scaler.inverse_transform(predictions_scaled)
+    
+    metrics = {
+        "Model": f"LSTM ({len(targets)} Outputs)",
+        "R2_Score": round(r2_score(y_test_real, predictions_real), 4),
+        "MAE": round(mean_absolute_error(y_test_real, predictions_real), 4),
+        "RMSE": round(np.sqrt(mean_squared_error(y_test_real, predictions_real)), 4)
+    }
+    return model, y_test_real, predictions_real, metrics
+
+# ==========================================
+# 🌲 2. RANDOM FOREST TRAINING LOGIC
+# ==========================================
+def train_and_evaluate_rf(df, features, targets, test_size, random_state):
     logging.info("--- STARTING RANDOM FOREST PIPELINE ---")
     
     X = df[features]
-    y = df[target]
+    y = df[targets]
     
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state, shuffle=False
     )
     
     model = build_rf_model(random_state=random_state)
-    logging.info("Training Random Forest model...")
+    logging.info("Training Multi-Output Random Forest model...")
     model.fit(X_train, y_train)
     
     predictions = model.predict(X_test)
     
     metrics = {
-        "Model": "Random Forest",
+        "Model": f"Random Forest ({len(targets)} Outputs)",
         "R2_Score": round(r2_score(y_test, predictions), 4),
         "MAE": round(mean_absolute_error(y_test, predictions), 4),
         "RMSE": round(np.sqrt(mean_squared_error(y_test, predictions)), 4)

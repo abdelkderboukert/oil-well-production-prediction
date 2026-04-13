@@ -57,6 +57,7 @@ docker-compose*
 # Documentation
 README.md
 README*.md
+*.md
 docs/
 LICENSE
 

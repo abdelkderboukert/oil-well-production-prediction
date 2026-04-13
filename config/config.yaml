@@ -15,9 +15,19 @@ pipeline:
   - C3
   - C4
   - C5P
+  - H2O
+  - WATER
   safe_features:
   - HOURS
   - WHP
   - WHT
   - WLP
-  target_col: W_GAS
+  - H2O
+  - WATER
+  target_col:
+  - W_GAS
+  - S_GAS
+  - LPG_VOL
+  - LPG_MASS
+  - COND_VOL
+  - COND_MASS

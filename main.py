@@ -1,81 +1,21 @@
-# """
-# Oil Well Production Prediction Pipeline
-# Executes the deep learning pipeline using LSTM.
-# """
-
-# import logging
-# import json
-# import os
-# from src.utils import load_config, check_feature_leakage
-# from src.ingestion import load_raw_data
-# from src.preprocessing import clean_data
-# from src.train import train_and_evaluate
-# from src.model import save_model
-
-# # Notice: plot_feature_importance is removed since LSTMs don't support it natively
-# from src.visualize import plot_actual_vs_predicted, plot_well_time_series
-
-# def main():
-#     config = load_config()
-    
-#     raw_df = load_raw_data(config['data']['raw_path'])
-#     clean_df = clean_data(raw_df)
-#     check_feature_leakage(clean_df)
-    
-#     clean_df.to_csv(config['data']['processed_path'], index=False)
-#     logging.info(f"Clean data saved to {config['data']['processed_path']}")
-    
-#     # --- DEEP LEARNING SETTINGS ---
-#     TIME_STEPS = 7 # The LSTM will look at the past 7 days to predict the future
-    
-#     trained_model, y_test, predictions, metrics = train_and_evaluate(
-#         df=clean_df,
-#         features=config['pipeline']['safe_features'],
-#         target=config['pipeline']['target_col'],
-#         time_steps=TIME_STEPS,
-#         test_size=config['model']['test_size'],
-#         random_state=config['model']['random_state']
-#     )
-    
-#     # Save the LSTM model to .keras
-#     save_model(trained_model, filepath="models/production_model.keras")
-    
-#     # Save metrics report
-#     os.makedirs("reports", exist_ok=True)
-#     report_path = "reports/lstm_model_metrics.json"
-#     with open(report_path, "w") as f:
-#         json.dump(metrics, f, indent=4)
-#     logging.info(f"Metrics report saved to {report_path}")
-
-#     # Visualizations
-#     logging.info("Generating visualizations...")
-#     plot_actual_vs_predicted(y_test, predictions)
-#     plot_well_time_series(clean_df, well_name='TFT-302', target_col=config['pipeline']['target_col'])
-
-#     logging.info("LSTM Pipeline execution completed successfully!")
-
-# if __name__ == "__main__":
-#     main()
-
-
 """
-Dual-Model Production Prediction Pipeline
-Trains and saves both the LSTM (Forecaster) and Random Forest (Anomaly Detector).
+Oil Well Production Prediction Pipeline
+Trains BOTH the LSTM and Random Forest for MULTI-TARGET Regression.
 """
 
-import json
 import logging
+import json
 import os
 from src.utils import load_config, check_feature_leakage
 from src.ingestion import load_raw_data
 from src.preprocessing import clean_data
 from src.train import train_and_evaluate_lstm, train_and_evaluate_rf
 from src.model import save_lstm_model, save_rf_model
+from src.visualize import plot_actual_vs_predicted, plot_well_time_series
 
 def main():
     config = load_config()
     
-    # 1. Data Processing
     raw_df = load_raw_data(config['data']['raw_path'])
     clean_df = clean_data(raw_df)
     check_feature_leakage(clean_df)
@@ -84,40 +24,53 @@ def main():
     logging.info("Clean data saved to processed folder.")
     
     features = config['pipeline']['safe_features']
-    target = config['pipeline']['target_col']
+    features_lstm = config['pipeline']['feature_cols']
+    
+    # Multi-target columns
+    targets = config['pipeline']['target_col']
+    if isinstance(targets, str):
+        targets = [targets]
+        
     test_size = config['model']['test_size']
     random_state = config['model']['random_state']
 
     all_metrics = {}
 
-    # 2. Train and Save LSTM (The Forecaster)
+    # 1. Train and Save LSTM (The Forecaster)
     TIME_STEPS = 7
     lstm_model, lstm_y, lstm_pred, lstm_metrics = train_and_evaluate_lstm(
-        clean_df, features, target, TIME_STEPS, test_size, random_state
+        clean_df, features_lstm, targets, TIME_STEPS, test_size, random_state
     )
     save_lstm_model(lstm_model, filepath="models/production_model.keras")
     all_metrics["LSTM"] = lstm_metrics
 
-    # 3. Train and Save Random Forest (The Anomaly Detector)
+    # 2. Train and Save Random Forest (The Anomaly Detector)
     rf_model, rf_y, rf_pred, rf_metrics = train_and_evaluate_rf(
-        clean_df, features, target, test_size, random_state
+        clean_df, features, targets, test_size, random_state
     )
     save_rf_model(rf_model, filepath="models/rf_model.joblib")
     all_metrics["Random_Forest"] = rf_metrics
 
-    # 4. Save Combined Metrics
+    # 3. Save Combined Metrics
     os.makedirs("reports", exist_ok=True)
     with open("reports/dual_model_metrics.json", "w") as f:
         json.dump(all_metrics, f, indent=4)
         
-    logging.info("\n--- FINAL RESULTS ---")
-    for model_name, metrics in all_metrics.items():
-        print(f"\n{model_name}:")
-        for k, v in metrics.items():
-            print(f"  {k}: {v}")
+    logging.info("\n" + "*"*60 + "\n🏆 FINAL DUAL-MODEL PERFORMANCE REPORT\n" + "*"*60)
+    print(f"\n{'METRIC':<30} | {'RANDOM FOREST (MULTI)':<25} | {'LSTM (MULTI)':<25}")
+    print("-" * 85)
+    for key in ["R2_Score", "MAE", "RMSE"]:
+        print(f"{key:<30} | {rf_metrics[key]:<25} | {lstm_metrics[key]:<25}")
+        
+    # 4. Generate Visualizations (Plotting just the first target, usually W_GAS)
+    logging.info("Generating visualizations for primary target...")
+    primary_target = targets[0]
+    
+    # Since y is a 2D array now, we slice [:, 0] to just plot the W_GAS predictions
+    plot_actual_vs_predicted(lstm_y[:, 0], lstm_pred[:, 0], filepath=f"plots/actual_vs_predicted_{primary_target}.png")
+    plot_well_time_series(clean_df, well_name='TFT-302', target_col=primary_target)
 
-    logging.info("Dual Pipeline execution completed successfully! Both models are saved.")
-
+    logging.info("\n🎉 Pipeline execution completed successfully! Multi-Output models are ready.")
 
 if __name__ == "__main__":
     main()

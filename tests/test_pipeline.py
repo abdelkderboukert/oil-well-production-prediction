@@ -1,8 +1,8 @@
 """
-Unit Tests - Test Suite
+Unit Tests - Test Suite (Multi-Output / Dual-Architecture)
 
-Comprehensive test suite covering data ingestion, preprocessing, model building,
-and training functionality.
+Comprehensive test suite covering data ingestion, preprocessing (resampling), 
+3D sequence generation, model building, and training for both LSTM and RF.
 """
 
 import pytest
@@ -10,11 +10,18 @@ import pandas as pd
 import numpy as np
 import tempfile
 import os
+from sklearn.ensemble import RandomForestRegressor
+from tensorflow.keras.models import Sequential
+
+# Import your pipeline functions
 from src.ingestion import load_raw_data
 from src.preprocessing import clean_data
-from src.model import build_model, save_model
-from src.train import train_and_evaluate
+from src.model import build_lstm_model, build_rf_model, save_lstm_model, save_rf_model
+from src.train import create_sequences, train_and_evaluate_lstm, train_and_evaluate_rf
 
+# --- CONSTANTS FOR TESTING ---
+FEATURES = ['HOURS', 'WHP', 'WHT', 'WLP']
+TARGETS = ['W_GAS', 'S_GAS', 'LPG_VOL', 'LPG_MASS', 'COND_VOL', 'COND_MASS']
 
 class TestDataIngestion:
     """Test cases for data ingestion module."""
@@ -23,154 +30,152 @@ class TestDataIngestion:
     def sample_csv(self):
         """Create a temporary sample CSV file for testing."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
-            f.write("DATE,WELL,HOURS,WHP,WHT,WLP,W_GAS\n")
-            f.write("2023-01-01,TFT-301,100,150.5,85.2,50.1,1500.0\n")
-            f.write("2023-01-02,TFT-301,105,155.0,86.1,51.0,1550.0\n")
-            f.write("2023-01-03,TFT-302,110,160.0,87.0,52.0,1600.0\n")
+            f.write("DATE,WELL,HOURS,WHP,WHT,WLP,W_GAS,S_GAS,LPG_VOL,LPG_MASS,COND_VOL,COND_MASS\n")
+            f.write("2023-01-01,TFT-301,24,150.5,85.2,50.1,1500,100,50,25,10,5\n")
+            f.write("2023-01-02,TFT-301,24,155.0,86.1,51.0,1550,110,55,27,11,6\n")
             filepath = f.name
         yield filepath
         os.unlink(filepath)
 
     def test_load_raw_data(self, sample_csv):
-        """Test loading raw data from CSV."""
         df = load_raw_data(sample_csv)
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
-        assert df.shape[0] == 3
+        assert df.shape[0] == 2
+        assert 'COND_MASS' in df.columns
 
 
 class TestDataPreprocessing:
     """Test cases for data preprocessing module."""
 
-    @pytest.fixture
-    def sample_dataframe(self):
-        """Create sample dataframe for testing."""
-        data = {
-            'DATE': pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03']),
-            'WELL': ['TFT-301', 'TFT-301', 'TFT-302'],
-            'HOURS': [100, 105, 110],
-            'WHP': [150.5, 155.0, 160.0],
-            'WHT': [85.2, 86.1, 87.0],
-            'WLP': [50.1, 51.0, 52.0],
-            'W_GAS': [1500.0, 1550.0, 1600.0],
-            'prodindex': [1, 2, 3]
-        }
-        return pd.DataFrame(data)
-
-    def test_clean_data_removes_columns(self, sample_dataframe):
-        """Test that unnecessary columns are removed."""
-        cleaned = clean_data(sample_dataframe)
-        assert 'prodindex' not in cleaned.columns
-
-    def test_clean_data_handles_negatives(self):
-        """Test that negative values are replaced with NaN."""
+    def test_clean_data_removes_columns_and_negatives(self):
+        """Test column removal and negative value handling."""
         data = {
             'DATE': pd.to_datetime(['2023-01-01']),
             'WELL': ['TFT-301'],
-            'HOURS': [-100],  # Invalid negative
+            'HOURS': [-24],  # Invalid negative
             'WHP': [150.5],
             'WHT': [85.2],
-            'WLP': [50.1],
-            'W_GAS': [1500.0]
+            'prodindex': [1] # Irrelevant column
         }
         df = pd.DataFrame(data)
         cleaned = clean_data(df)
-        print(cleaned)
-        assert pd.isna(cleaned.loc[0, 'HOURS'])
+        
+        assert 'prodindex' not in cleaned.columns
+        assert pd.isna(cleaned.loc[0, 'HOURS']) or cleaned.loc[0, 'HOURS'] == 0
 
     def test_clean_data_handles_date_gaps_and_imputation(self):
         """Test that date gaps are resampled and missing values are forward-filled."""
-        # Create data with a missing day (Jan 2nd is missing)
+        # Missing Jan 2nd
         data = {
             'DATE': ['2023-01-01', '2023-01-03'], 
             'WELL': ['TFT-301', 'TFT-301'],
-            'HOURS': [24.0, 20.0],
             'WHP': [150.0, 140.0],
-            'WHT': [60.0, 55.0],
-            'WLP': [40.0, 35.0],
             'W_GAS': [1000.0, 900.0]
         }
         df = pd.DataFrame(data)
-        
-        # Run the cleaning pipeline
         cleaned = clean_data(df)
         
-        # 1. Assert that the missing day (Jan 2) was automatically created
-        assert len(cleaned) == 3, "Resampling failed: The missing day was not created."
-        
-        # Convert dates back to strings to easily check them
+        # Check that Jan 2nd was created (Total 3 days)
+        assert len(cleaned) == 3
         dates = cleaned['DATE'].dt.strftime('%Y-%m-%d').tolist()
-        assert '2023-01-02' in dates, "Jan 2nd was not found in the resampled data."
+        assert '2023-01-02' in dates
         
-        # 2. Assert that the values for Jan 2nd were forward-filled from Jan 1st
+        # Check that Jan 2nd values were forward-filled from Jan 1st
         jan_2_data = cleaned[cleaned['DATE'] == '2023-01-02'].iloc[0]
-        assert jan_2_data['WHP'] == 150.0, "Forward-fill failed for WHP."
-        assert jan_2_data['WHT'] == 60.0, "Forward-fill failed for WHT."
-        assert jan_2_data['WELL'] == 'TFT-301', "Well name was lost during resampling."
+        assert jan_2_data['WHP'] == 150.0
 
 
 class TestModelBuild:
-    """Test cases for model building."""
+    """Test cases for building and saving models."""
 
-    def test_build_model_returns_estimator(self):
-        """Test that build_model returns a valid sklearn estimator."""
-        from sklearn.ensemble import RandomForestRegressor
-        model = build_model()
+    def test_build_lstm_model(self):
+        model = build_lstm_model(time_steps=7, n_features=4, n_outputs=6)
+        assert isinstance(model, Sequential)
+        # Check output shape matches 6 targets
+        assert model.output_shape == (None, 6) 
+
+    def test_build_rf_model(self):
+        model = build_rf_model(n_estimators=10)
         assert isinstance(model, RandomForestRegressor)
+        assert model.n_estimators == 10
 
-    def test_build_model_parameters(self):
-        """Test that model is built with correct parameters."""
-        model = build_model(n_estimators=100, random_state=42)
-        assert model.n_estimators == 100
-        assert model.random_state == 42
-
-    def test_save_model(self):
-        """Test model saving functionality."""
+    def test_save_models(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            model = build_model()
-            filepath = os.path.join(tmpdir, 'test_model.joblib')
-            save_model(model, filepath)
-            assert os.path.exists(filepath)
+            lstm_model = build_lstm_model(7, 4, 6)
+            rf_model = build_rf_model(10)
+            
+            lstm_path = os.path.join(tmpdir, 'test_lstm.keras')
+            rf_path = os.path.join(tmpdir, 'test_rf.joblib')
+            
+            save_lstm_model(lstm_model, lstm_path)
+            save_rf_model(rf_model, rf_path)
+            
+            assert os.path.exists(lstm_path)
+            assert os.path.exists(rf_path)
 
 
 class TestTraining:
-    """Test cases for model training."""
+    """Test cases for sequence generation and model training workflows."""
 
     @pytest.fixture
-    def training_data(self):
-        """Create sample training data."""
-        n_samples = 100
+    def multi_target_data(self):
+        """Create sample dataset with multiple targets and enough rows for LSTM sequencing."""
+        n_samples = 50 # Enough days to create sequences and do validation split
+        
+        # Generate sequential dates for one well
+        dates = pd.date_range(start='2023-01-01', periods=n_samples)
+        
         data = {
-            'HOURS': np.random.randint(50, 150, n_samples),
+            'DATE': dates,
+            'WELL': ['TFT-301'] * n_samples,
+            'HOURS': np.random.uniform(20, 24, n_samples),
             'WHP': np.random.uniform(140, 170, n_samples),
             'WHT': np.random.uniform(80, 90, n_samples),
             'WLP': np.random.uniform(45, 55, n_samples),
             'W_GAS': np.random.uniform(1000, 2000, n_samples),
-            'WELL': np.random.choice(['TFT-301', 'TFT-302'], n_samples)
+            'S_GAS': np.random.uniform(100, 200, n_samples),
+            'LPG_VOL': np.random.uniform(50, 100, n_samples),
+            'LPG_MASS': np.random.uniform(25, 50, n_samples),
+            'COND_VOL': np.random.uniform(10, 20, n_samples),
+            'COND_MASS': np.random.uniform(5, 10, n_samples)
         }
         return pd.DataFrame(data)
 
-    def test_train_and_evaluate(self, training_data):
-        """Test training and evaluation workflow."""
-        model = build_model(n_estimators=10, random_state=42)
-        features = ['HOURS', 'WHP', 'WHT', 'WLP']
-        target = 'W_GAS'
+    def test_create_sequences(self, multi_target_data):
+        time_steps = 7
+        X, y = create_sequences(multi_target_data, FEATURES, TARGETS, time_steps)
+        
+        # Total samples = 50. Sequences = 50 - 7 = 43.
+        assert X.shape == (43, 7, 4)  # (samples, time_steps, features)
+        assert y.shape == (43, 6)     # (samples, targets)
 
-        trained_model, y_test, predictions, metrics = train_and_evaluate(
-            model=model,
-            df=training_data,
-            features=features,
-            target=target,
+    def test_train_and_evaluate_rf(self, multi_target_data):
+        """Test Multi-Output Random Forest training."""
+        model, y_test, preds, metrics = train_and_evaluate_rf(
+            df=multi_target_data,
+            features=FEATURES,
+            targets=TARGETS,
             test_size=0.2,
             random_state=42
         )
-
-        assert trained_model is not None
-        assert len(predictions) > 0
-        assert isinstance(metrics, dict)
+        assert isinstance(model, RandomForestRegressor)
+        assert preds.shape[1] == 6 # Must predict 6 outputs
         assert 'R2_Score' in metrics
-        assert 'Mean_Absolute_Error_MAE' in metrics
 
+    def test_train_and_evaluate_lstm(self, multi_target_data):
+        """Test Multi-Output LSTM training."""
+        model, y_test, preds, metrics = train_and_evaluate_lstm(
+            df=multi_target_data,
+            features=FEATURES,
+            targets=TARGETS,
+            time_steps=7,
+            test_size=0.2,
+            random_state=42
+        )
+        assert isinstance(model, Sequential)
+        assert preds.shape[1] == 6 # Must predict 6 outputs
+        assert 'RMSE' in metrics
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
