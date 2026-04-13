@@ -304,7 +304,7 @@ Adjust `n_estimators` in config for speed/accuracy tradeoff.
 
 ## Support
 
-- 📧 Email: info@example.com
+- 📧 Email: [Abdelkader Boukert](abdelkaderboukart@gmail.com)
 - 🐛 Issues: [GitHub Issues](https://github.com/abdelkderboukert/oil-well-production-prediction/issues)
 - 📚 Documentation: [See docs/](docs/)
 
