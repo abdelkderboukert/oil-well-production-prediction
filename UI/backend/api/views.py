@@ -15,7 +15,7 @@ from django.http import HttpResponse
 from .ml_service import MLService
 
 class WellViewSet(viewsets.ModelViewSet):
-    queryset = Well.objects.all()
+    queryset = Well.objects.all().order_by('name')
     serializer_class = WellSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'uwi']
@@ -266,8 +266,8 @@ class ExportDataView(APIView):
 
         # 4. Write the Header Row (Matching your ML pipeline exact columns)
         writer.writerow([
-            'DATE', 'WELL', 'HOURS', 'WHP', 'WHT', 'WLP', 'H2O', 'WATER', 
-            'W_GAS', 'S_GAS', 'LPG_VOL', 'LPG_MASS', 'COND_VOL', 'COND_MASS'
+            'DATE', 'WELL', 'HOURS_ON_STREAM', 'WHP', 'WHT', 'WLP', 
+            'WATER_CUT', 'GAS_FLOW_RATE', 'OIL_FLOW_RATE', 'C3', 'C4', 'TAG'
         ])
 
         # 5. Write the Data Rows
@@ -275,18 +275,16 @@ class ExportDataView(APIView):
             writer.writerow([
                 row.date,
                 row.well.name,
-                row.hours,
+                row.hours_on_stream,
                 row.whp,
                 row.wht,
                 row.wlp,
-                row.h2o,
-                row.water,
-                row.w_gas,
-                row.s_gas,
-                row.lpg_vol,
-                row.lpg_mass,
-                row.cond_vol,
-                row.cond_mass
+                row.water_cut,
+                row.gas_flow_rate,
+                row.oil_flow_rate,
+                row.c3,
+                row.c4,
+                row.tag
             ])
 
         return response
@@ -353,7 +351,7 @@ class ImportDataView(APIView):
                 whp=row.get('WHP', 0),
                 wht=row.get('WHT', 0),
                 wlp=row.get('WLP', 0),
-                h2o=row.get('H2O', 0),
+                water_cut=row.get('H2O', 0),
                 water=row.get('WATER', 0),
                 w_gas=row.get('W_GAS', 0),
                 s_gas=row.get('S_GAS', 0),
