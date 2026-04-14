@@ -28,6 +28,8 @@ class WellProduction(models.Model):
     hours_on_stream = models.DecimalField(max_digits=5, decimal_places=2) # Max 24.00
     whp = models.DecimalField("Wellhead Pressure (psi)", max_digits=10, decimal_places=2)
     wht = models.DecimalField("Wellhead Temperature (F)", max_digits=10, decimal_places=2)
+    wlp = models.DecimalField("WLP", max_digits=10, decimal_places=2)
+    # h2o = models.DecimalField("H2O", max_digits=10, decimal_places=2)
     
     # Composition / Yields
     gas_flow_rate = models.DecimalField(max_digits=15, decimal_places=3, default=0)

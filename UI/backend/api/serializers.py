@@ -19,4 +19,4 @@ class WellSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Well
-        fields = ['id', 'name', 'uwi', 'well_type', 'production_history']
+        fields = '__all__'
