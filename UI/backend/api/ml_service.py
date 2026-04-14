@@ -18,7 +18,7 @@ class MLService:
             return
             
         # models_dir = os.path.join(settings.BASE_DIR, "models")
-        models_dir = os.path.join("/home/Bluck/rebo/oil-well-production-prediction/models")
+        models_dir = os.path.join("/home/Bluck/rebo/oil-well-production-prediction/AI/models")
 
         # Only load the AI artifacts, NOT the CSV dataset
         self.rf_model = joblib.load(os.path.join(models_dir, "rf_model.joblib"))

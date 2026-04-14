@@ -5,10 +5,12 @@ on:
     branches:
       - development
       - main
+      - dev-*
   pull_request:
     branches:
       - development
       - main
+      - dev-*
   schedule:
     # Run security scans weekly
     - cron: "0 2 * * 0"
@@ -167,18 +169,21 @@ jobs:
           pip install pylint flake8 black isort
 
       - name: Run Black formatter check
-        run: black --check src/ main.py
+        run: |
+          cd AI
+          black --check src/ main.py
 
       # - name: Run isort import sorter check
       #   run: isort --check-only src/ main.py
 
       - name: Run Pylint
         run: |
-          pylint src/ main.py -r n --output-format=json > pylint-report.json || true
+          cd AI
+          pylint AI/src/ AI/main.py -r n --output-format=json > pylint-report.json || true
 
       - name: Run Flake8
         run: |
-          flake8 src/ main.py --format=json > flake8-report.json || true
+          flake8 AI/src/ AI/main.py --format=json > flake8-report.json || true
 
       - name: Upload quality reports
         uses: actions/upload-artifact@v4
@@ -212,7 +217,7 @@ jobs:
 
       - name: Validate Python configuration
         run: |
-          python -m py_compile main.py src/*.py
+          python -m py_compile AI/main.py AI/src/*.py
         continue-on-error: true
 
   # Build and scan Docker image

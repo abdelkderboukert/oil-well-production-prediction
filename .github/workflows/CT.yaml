@@ -30,6 +30,7 @@ jobs:
     
       - name: Run Test 
         run: |
+         cd AI
          python -m tests.test_pipeline.py
 
       - name: Execute Training Pipeline

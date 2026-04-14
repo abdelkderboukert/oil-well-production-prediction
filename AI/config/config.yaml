@@ -1,6 +1,6 @@
 data:
-  processed_path: data/processed/clean_data.csv
-  raw_path: data/raw/data.csv
+  processed_path: ../data/processed/clean_data.csv
+  raw_path: ../data/raw/data.csv
 model:
   n_estimators: 150
   random_state: 42

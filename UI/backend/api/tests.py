@@ -17,21 +17,28 @@ class OilGasEnterpriseTests(APITestCase):
         It sets up a fake database with exactly 1 Well and 1 Production row.
         """
         self.well = Well.objects.create(
-            name="TFT-302",
-            uwi="UWI-12345",
-            well_type="OIL",
-            total_depth=1500.50
+            name= "TFT-302", 
+            uwi= "100/01-01-010-01W1/00", 
+            well_type= "OIL", 
+            latitude= 51.0447, 
+            longitude= -114.0719, 
+            spud_date= "2026-04-01", 
+            total_depth= 2500.50
         )
         
         self.production = WellProduction.objects.create(
             well=self.well,
-            date="2023-01-01",
-            hours_on_stream=24.0,
-            whp=150.0,
-            wht=85.0,
-            water_cut=5.0,
-            gas_flow_rate=1200.5,
-            oil_flow_rate=500.0
+            date= "2026-04-01",
+            hours_on_stream= 23.50,
+            whp= 850.25,
+            wht= 95.00,
+            wlp= 0,
+            gas_flow_rate= 120.500,
+            oil_flow_rate= 45.200,
+            water_cut= 1.50,
+            c3= 0.0450,
+            c4= 0.0210,
+            tag= True
         )
 
     # ==========================================
@@ -42,7 +49,7 @@ class OilGasEnterpriseTests(APITestCase):
         self.assertEqual(Well.objects.count(), 1)
         self.assertEqual(WellProduction.objects.count(), 1)
         # Tests the __str__ method on your Well model
-        self.assertEqual(str(self.well), "TFT-302 [UWI-12345]")
+        self.assertEqual(str(self.well), "TFT-302 [100/01-01-010-01W1/00]")
 
     # ==========================================
     # 2. CRUD API TESTS (ModelViewSet)

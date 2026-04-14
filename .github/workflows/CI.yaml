@@ -5,6 +5,7 @@ on:
     branches:
       - development
       - main
+      - dev-*
   pull_request:
     branches:
       - development
@@ -68,7 +69,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          pytest tests/ -v --cov=src --cov-report=xml --cov-report=html
+          pytest AI/tests/ -v --cov=src --cov-report=xml --cov-report=html
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
@@ -98,7 +99,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Validate Python syntax
-        run: python -m py_compile main.py src/*.py
+        run: python -m py_compile AI/main.py AI/src/*.py
 
       - name: Verify configuration files
         run: |
@@ -106,6 +107,6 @@ jobs:
 
       - name: Build artifact (if applicable)
         run: |
-          mkdir -p build/
-          cp -r src/ main.py requirements.txt build/
+          mkdir -p AI/build/
+          cp -r AI/src/ AI/main.py requirements.txt AI/build/
           echo "Build completed successfully"
