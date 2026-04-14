@@ -267,14 +267,20 @@ class ExportDataView(APIView):
 
         # 4. Write the Header Row (Matching your ML pipeline exact columns)
         writer.writerow([
+<<<<<<< HEAD
             'DATE', 'WELL', 'HOURS', 'WHP', 'WHT', 'WLP', 
             'H2O', 'WATER', 'prodindex', 'W_GAS', 'S_GAS', 'LPG_MASS', 'LGP_VOL', 'COND_VOL', 'COND_MASS', 'C2M', 'C3', 'C4', 'C5P', 'TAG'
+=======
+            'DATE', 'WELL', 'HOURS_ON_STREAM', 'WHP', 'WHT', 'WLP', 
+            'WATER_CUT', 'GAS_FLOW_RATE', 'OIL_FLOW_RATE', 'C3', 'C4', 'TAG'
+>>>>>>> 1b63492 (change the structure of the project than change some detzi in th workflow to adapte the update)
         ])
 
         for row in queryset:
             writer.writerow([
                 row.date,
                 row.well.name,
+<<<<<<< HEAD
                 row.hours,     
                 row.whp,
                 row.wht,
@@ -292,6 +298,17 @@ class ExportDataView(APIView):
                 row.c3,
                 row.c4,
                 row.c5p,
+=======
+                row.hours_on_stream,
+                row.whp,
+                row.wht,
+                row.wlp,
+                row.water_cut,
+                row.gas_flow_rate,
+                row.oil_flow_rate,
+                row.c3,
+                row.c4,
+>>>>>>> 1b63492 (change the structure of the project than change some detzi in th workflow to adapte the update)
                 row.tag
             ])
 
@@ -358,7 +375,7 @@ class ImportDataView(APIView):
                 whp=row.get('WHP', 0),
                 wht=row.get('WHT', 0),
                 wlp=row.get('WLP', 0),
-                h2o=row.get('H2O', 0),
+                water_cut=row.get('H2O', 0),
                 water=row.get('WATER', 0),
                 w_gas=row.get('W_GAS', 0),
                 s_gas=row.get('S_GAS', 0),
