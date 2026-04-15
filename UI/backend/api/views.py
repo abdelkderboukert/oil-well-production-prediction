@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.db import transaction
 
 import csv
 from django.http import HttpResponse
@@ -266,24 +267,31 @@ class ExportDataView(APIView):
 
         # 4. Write the Header Row (Matching your ML pipeline exact columns)
         writer.writerow([
-            'DATE', 'WELL', 'HOURS_ON_STREAM', 'WHP', 'WHT', 'WLP', 
-            'WATER_CUT', 'GAS_FLOW_RATE', 'OIL_FLOW_RATE', 'C3', 'C4', 'TAG'
+            'DATE', 'WELL', 'HOURS', 'WHP', 'WHT', 'WLP', 
+            'H2O', 'WATER', 'prodindex', 'W_GAS', 'S_GAS', 'LPG_MASS', 'LGP_VOL', 'COND_VOL', 'COND_MASS', 'C2M', 'C3', 'C4', 'C5P', 'TAG'
         ])
 
-        # 5. Write the Data Rows
         for row in queryset:
             writer.writerow([
                 row.date,
                 row.well.name,
-                row.hours_on_stream,
+                row.hours,     
                 row.whp,
                 row.wht,
                 row.wlp,
-                row.water_cut,
-                row.gas_flow_rate,
-                row.oil_flow_rate,
+                row.h2o,       
+                row.water, 
+                row.prodindex,
+                row.w_gas,   
+                row.s_gas, 
+                row.lpg_mass, 
+                row.lpg_vol,   
+                row.cond_vol,  
+                row.cond_mass,
+                row.c2m,
                 row.c3,
                 row.c4,
+                row.c5p,
                 row.tag
             ])
 
@@ -313,12 +321,12 @@ class ImportDataView(APIView):
             return Response({"error": "File must contain 'WELL' and 'DATE' columns."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 2. Check for missing wells in the database
+        # Dropna to avoid breaking if there's a blank row at the end of the CSV
         file_wells = df['WELL'].dropna().unique()
         existing_wells = dict(Well.objects.filter(name__in=file_wells).values_list('name', 'id'))
         
-        missing_wells = [w for w in file_wells if w not in existing_wells]
+        missing_wells = [w for w in file_wells if w not in existing_wells and str(w).strip() != '0']
         
-        # Condition 1: If wells are missing, block the import and tell the user!
         if missing_wells:
             return Response({
                 "error": "Missing Wells Found",
@@ -327,45 +335,49 @@ class ImportDataView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # 3. Clean and prepare data
-        # Convert dates to standard YYYY-MM-DD
         df['DATE'] = pd.to_datetime(df['DATE']).dt.date
         
-        # Replace NaN/Empty values with 0 so the database doesn't crash on math fields
-        df = df.replace({np.nan: 0}) 
+        # Replace NaN values safely. We use pandas built-in fillna for numbers.
+        df.fillna(0, inplace=True)
 
         # 4. Create Production Records
         production_records = []
         
         for _, row in df.iterrows():
-            well_name = row['WELL']
-            date = row['DATE']
+            well_name = row.get('WELL')
+            date = row.get('DATE')
             
-            if not well_name or pd.isna(date):
+            if not well_name or well_name == 0 or not date or date == 0:
                 continue
                 
-            # Safely get variables, defaulting to 0 if the column isn't in the CSV
+            # Safely get variables matching your EXACT models.py
             production_records.append(WellProduction(
                 well_id=existing_wells[well_name],
                 date=date,
-                hours=row.get('HOURS', 0),
+                hours=row.get('HOURS', 24.0),
                 whp=row.get('WHP', 0),
                 wht=row.get('WHT', 0),
                 wlp=row.get('WLP', 0),
-                water_cut=row.get('H2O', 0),
+                h2o=row.get('H2O', 0),
                 water=row.get('WATER', 0),
                 w_gas=row.get('W_GAS', 0),
                 s_gas=row.get('S_GAS', 0),
-                lpg_vol=row.get('LPG_VOL', 0),
-                lpg_mass=row.get('LPG_MASS', 0),
+                lpg_vol=row.get('LPG_VOL', 0),   # FIXED TYPO
+                lpg_mass=row.get('LPG_MASS', 0), # FIXED TYPO
                 cond_vol=row.get('COND_VOL', 0),
-                cond_mass=row.get('COND_MASS', 0)
+                cond_mass=row.get('COND_MASS', 0),
+                # Using None for fields that are null=True in your models.py
+                c2m=row.get('C2M') if row.get('C2M') != 0 else None,
+                c3=row.get('C3') if row.get('C3') != 0 else None,
+                c4=row.get('C4') if row.get('C4') != 0 else None,
+                c5p=row.get('C5P') if row.get('C5P') != 0 else None,
+                prodindex=row.get('prodindex') if row.get('prodindex') != 0 else None,
+                tag=False
             ))
 
         # 5. Bulk Insert into Database
         try:
             with transaction.atomic():
-                # batch_size=5000 stops RAM from overflowing
-                # ignore_conflicts=True skips duplicates if the data was already uploaded
                 WellProduction.objects.bulk_create(
                     production_records, 
                     batch_size=5000, 
