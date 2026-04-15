@@ -1,48 +1,44 @@
-# Multi-stage build for optimized image size
+# STAGE 1: Builder
 FROM python:3.13-slim AS builder
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /build
 
-# Install build dependencies
+# libpq-dev is required to compile psycopg drivers
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt
+# Install into a local prefix to make copying to the final stage cleaner
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# Final stage
+# STAGE 2: Runtime
 FROM python:3.13-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Create application user for security
+# Install runtime library only (libpq5) - required for Postgres communication
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy installed dependencies from builder
+COPY --from=builder /install /usr/local
+
 RUN groupadd -r appuser && useradd -r -g appuser appuser
-
-# Copy Python dependencies from builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Copy application code
 COPY --chown=appuser:appuser . .
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)" || exit 1
-
-# Switch to non-root user
 USER appuser
 
-# Run the application
-CMD ["python", "manage.py", "runserver"]
+EXPOSE 8000
+
+# Use Gunicorn for production instead of manage.py runserver
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "myproject.wsgi:application"]

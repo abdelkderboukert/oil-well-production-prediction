@@ -5,13 +5,14 @@ class WellProductionSerializer(serializers.ModelSerializer):
     # We display the well name in the production list for better readability
     well_name = serializers.ReadOnlyField(source='well.name')
 
-    class __all__:
+    class Meta:
         model = WellProduction
-        fields = [
-            'id', 'well', 'well_name', 'date', 'hours', 
-            'whp', 'wht', 'wlp', 'c2m', 'c3', 'c4', 
-            'c5p', 'h2o', 'water', 'tag', 'created_at'
-        ]
+        # fields = [
+        #     'id', 'well', 'well_name', 'date', 'hours', 
+        #     'whp', 'wht', 'wlp', 'c2m', 'c3', 'c4', 
+        #     'c5p', 'h2o', 'water', 'tag', 'created_at'
+        # ]
+        fields = '__all__'
 
 class WellSerializer(serializers.ModelSerializer):
     # This allows you to see all production records when looking at a specific well

@@ -28,17 +28,17 @@ class OilGasEnterpriseTests(APITestCase):
         
         self.production = WellProduction.objects.create(
             well=self.well,
-            date= "2026-04-01",
-            hours_on_stream= 23.50,
-            whp= 850.25,
-            wht= 95.00,
-            wlp= 0,
-            gas_flow_rate= 120.500,
-            oil_flow_rate= 45.200,
-            water_cut= 1.50,
-            c3= 0.0450,
-            c4= 0.0210,
-            tag= True
+            date="2026-04-01",
+            hours=23.50,        
+            whp=850.25,
+            wht=95.00,
+            wlp=0,
+            w_gas=120.500,       
+            cond_vol=45.200,    
+            h2o=1.50,         
+            c3=0.0450,
+            c4=0.0210,
+            tag=True
         )
 
     # ==========================================
@@ -93,7 +93,7 @@ class OilGasEnterpriseTests(APITestCase):
         # 2. Check that the data we put in setUp() actually made it into the CSV
         content = response.content.decode('utf-8')
         self.assertIn('TFT-302', content)
-        self.assertIn('2023-01-01', content)
+        self.assertIn('2026-04-01', content)
 
     def test_import_csv_success(self):
         """Test bulk uploading a CSV of production data for an existing well."""

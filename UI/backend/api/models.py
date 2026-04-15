@@ -24,22 +24,32 @@ class WellProduction(models.Model):
     well = models.ForeignKey(Well, on_delete=models.CASCADE, related_name="production")
     date = models.DateField()
     
-    # Operational Data
-    hours_on_stream = models.DecimalField(max_digits=5, decimal_places=2) # Max 24.00
-    whp = models.DecimalField("Wellhead Pressure (psi)", max_digits=10, decimal_places=2)
-    wht = models.DecimalField("Wellhead Temperature (F)", max_digits=10, decimal_places=2)
-    wlp = models.DecimalField("WLP", max_digits=10, decimal_places=2)
-    # h2o = models.DecimalField("H2O", max_digits=10, decimal_places=2)
+    # Operational Features (Inputs for ML)
+    hours = models.DecimalField("Hours on Stream", max_digits=5, decimal_places=2, default=24.00)
+    whp = models.DecimalField("Wellhead Pressure", max_digits=10, decimal_places=2, default=0)
+    wht = models.DecimalField("Wellhead Temperature", max_digits=10, decimal_places=2, default=0)
+    wlp = models.DecimalField("Line Pressure", max_digits=10, decimal_places=2, default=0)
+    h2o = models.DecimalField("H2O %", max_digits=10, decimal_places=2, default=0)
+    water = models.DecimalField("Water Volume", max_digits=15, decimal_places=3, default=0)
+    prodindex = models.DecimalField("Productivity Index", max_digits=10, decimal_places=4, null=True, blank=True)
     
-    # Composition / Yields
-    gas_flow_rate = models.DecimalField(max_digits=15, decimal_places=3, default=0)
-    oil_flow_rate = models.DecimalField(max_digits=15, decimal_places=3, default=0)
-    water_cut = models.DecimalField("Water %", max_digits=5, decimal_places=2)
+    # Yields (Targets for ML)
+    w_gas = models.DecimalField("Wet Gas", max_digits=15, decimal_places=3, default=0)
+    s_gas = models.DecimalField("Sweet Gas", max_digits=15, decimal_places=3, default=0)
+    lpg_mass = models.DecimalField("LPG Mass", max_digits=15, decimal_places=3, default=0)
+    lpg_vol = models.DecimalField("LPG Vol", max_digits=15, decimal_places=3, default=0)
+    cond_vol = models.DecimalField("Condensate Volume", max_digits=15, decimal_places=3, default=0)
+    cond_mass = models.DecimalField("Condensate Mass", max_digits=15, decimal_places=3, default=0)
 
-    # Your specific chemical components (NGLs/Compositions)
-    c3 = models.DecimalField("Propane", max_digits=10, decimal_places=4, null=True)
-    c4 = models.DecimalField("Butane", max_digits=10, decimal_places=4, null=True)
+    # Chemical Compositions (NGLs)
+    c2m = models.DecimalField("C2- (Ethane/Methane)", max_digits=10, decimal_places=4, null=True, blank=True)
+    c3 = models.DecimalField("Propane", max_digits=10, decimal_places=4, null=True, blank=True)
+    c4 = models.DecimalField("Butane", max_digits=10, decimal_places=4, null=True, blank=True)
+    c5p = models.DecimalField("C5+ (Pentanes Plus)", max_digits=10, decimal_places=4, null=True, blank=True)
+    
+    # Metadata
+    tag = models.BooleanField(default=False)
     
     class Meta:
-        unique_together = ('well', 'date') # Prevents double-entry for the same day
+        unique_together = ('well', 'date')
         ordering = ['-date']
