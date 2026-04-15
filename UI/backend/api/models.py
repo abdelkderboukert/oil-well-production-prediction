@@ -10,7 +10,7 @@ class Well(models.Model):
     ]
     
     name = models.CharField(max_length=50)
-    uwi = models.CharField("Unique Well Identifier", max_length=20, unique=True)
+    uwi = models.CharField("Unique Well Identifier", max_length=50, unique=True)
     well_type = models.CharField(max_length=3, choices=WELL_TYPES, default='OIL')
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
