@@ -1,41 +1,99 @@
 version: "3.8"
 
 services:
-  oil-well-prediction:
-    # Build locally or use pre-built image from GitHub Container Registry
-    # For local build:
-    # build:
-    #   context: .
-    #   dockerfile: dockerfile
 
-    # For pre-built image from ghcr.io (recommended):
-    image: ghcr.io/abdelkderboukert/oil-well-production-prediction:main
-
-    container_name: oil-well-prediction-pipeline
-
-    # Restart policy
-    restart: "no"
-
-    # Environment variables
+  # ─── PostgreSQL Database ──────────────────────────────────────────────────
+  db:
+    build:
+      context: ./UI/DB
+      dockerfile: dockerfile
+    container_name: wellsense-db
+    restart: unless-stopped
     environment:
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
-
-    # Volume mounts for data persistence
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
-      # Configuration
-      - ./config:/app/config:ro
+      - wellsense_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-      # Data files
+  # ─── Django REST API Backend ──────────────────────────────────────────────
+  backend:
+    build:
+      context: ./UI/backend
+      dockerfile: dockerfile
+    container_name: wellsense-backend
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: db
+      DB_PORT: 5432
+    ports:
+      - "8000:8000"
+    volumes:
+      # ML model artifacts (read-only — produced by AI pipeline)
+      - ./AI/models:/ai_pipeline/models:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── Next.js Frontend ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./UI/frontend
+      dockerfile: dockerfile
+    container_name: wellsense-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── AI Pipeline (one-shot training job) ─────────────────────────────────
+  ai-pipeline:
+    build:
+      context: ./AI
+      dockerfile: dockerfile
+    container_name: wellsense-ai-pipeline
+    restart: "no"
+    environment:
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+    volumes:
+      - ./AI/config:/app/config:ro
       - ./data/raw:/app/data/raw:ro
       - ./data/processed:/app/data/processed
-
-      # Output directories
-      - ./models:/app/models
+      - ./AI/models:/app/models
       - ./plots:/app/plots
       - ./reports:/app/reports
-
-    # Resource limits
     deploy:
       resources:
         limits:
@@ -44,10 +102,12 @@ services:
         reservations:
           cpus: "1"
           memory: 1G
-
-    # Logging configuration
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+# ─── Named Volumes ────────────────────────────────────────────────────────────
+volumes:
+  wellsense_pgdata:
