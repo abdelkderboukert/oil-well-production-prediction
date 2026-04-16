@@ -1,10 +1,17 @@
 // Shared types for API communication
 
 export const FEATURES = ["HOURS", "WHP", "WHT", "WLP", "H2O", "WATER"] as const;
-export const TARGETS  = ["W_GAS", "S_GAS", "LPG_VOL", "LPG_MASS", "COND_VOL", "COND_MASS"] as const;
+export const TARGETS = [
+  "W_GAS",
+  "S_GAS",
+  "LPG_VOL",
+  "LPG_MASS",
+  "COND_VOL",
+  "COND_MASS",
+] as const;
 
-export type Feature = typeof FEATURES[number];
-export type Target  = typeof TARGETS[number];
+export type Feature = (typeof FEATURES)[number];
+export type Target = (typeof TARGETS)[number];
 
 export type FeatureInputs = Record<Feature, number>;
 export type TargetOutputs = Record<Target, number>;
@@ -15,34 +22,34 @@ export interface PredictResponse {
 
 export interface ForecastHistoryRow {
   date: string;
-  W_GAS:      number;
-  S_GAS:      number;
-  LPG_VOL:    number;
-  LPG_MASS:   number;
-  COND_VOL:   number;
-  COND_MASS:  number;
+  W_GAS: number;
+  S_GAS: number;
+  LPG_VOL: number;
+  LPG_MASS: number;
+  COND_VOL: number;
+  COND_MASS: number;
 }
 
 export interface ForecastResponse {
-  well:     string;
+  well: string;
   forecast: TargetOutputs;
-  history:  ForecastHistoryRow[];
+  history: ForecastHistoryRow[];
 }
 
 export interface RcaResult {
-  culprit_feature:  string;
-  reported_value:   number;
-  expected_value:   number;
+  culprit_feature: string;
+  reported_value: number;
+  expected_value: number;
 }
 
 export interface AnalyzeResult {
-  well:              string;
-  status:            "normal" | "anomaly" | "insufficient_data";
-  predicted_w_gas?:  number;
-  reported_w_gas?:   number;
-  error_pct?:        number;
-  rca?:              RcaResult;
-  message?:          string;
+  well: string;
+  status: "normal" | "anomaly" | "insufficient_data";
+  predicted_w_gas?: number;
+  reported_w_gas?: number;
+  error_pct?: number;
+  rca?: RcaResult;
+  message?: string;
 }
 
 export interface AnalyzeResponse {
@@ -51,21 +58,24 @@ export interface AnalyzeResponse {
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api";
 
-export async function predictProduction(inputs: FeatureInputs): Promise<PredictResponse> {
+export async function predictProduction(
+  inputs: FeatureInputs,
+): Promise<PredictResponse> {
   const res = await fetch(`${BASE}/ml/predict/`, {
-    method:  "POST",
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify(inputs),
+    body: JSON.stringify(inputs),
   });
   if (!res.ok) throw new Error(await res.text());
+  console.log(res.json());
   return res.json();
 }
 
 export async function forecastWell(well: string): Promise<ForecastResponse> {
   const res = await fetch(`${BASE}/ml/forecast/`, {
-    method:  "POST",
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ well }),
+    body: JSON.stringify({ well }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -76,7 +86,7 @@ export async function analyzeReport(file: File): Promise<AnalyzeResponse> {
   formData.append("file", file);
   const res = await fetch(`${BASE}/ml/analyze/`, {
     method: "POST",
-    body:   formData,
+    body: formData,
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -88,5 +98,6 @@ export async function fetchWells(): Promise<string[]> {
   const data = await res.json();
   // DRF paginated: { results: [{name: ...}] } or plain array
   const items = data.results ?? data;
+  console.table(items);
   return items.map((w: { name: string }) => w.name);
 }
