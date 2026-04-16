@@ -102,10 +102,7 @@ markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 matplotlib==3.10.8
 matplotlib-inline==0.2.1
-<<<<<<< HEAD
-<<<<<<< HEAD
 mccabe==0.7.0
-<<<<<<< HEAD
 mccabe==0.7.0
 mdurl==0.1.2
 mistune==3.2.0
@@ -113,12 +110,7 @@ ml_dtypes==0.5.4
 mypy_extensions==1.1.0
 namex==0.1.0
 narwhals==2.19.0
-=======
-=======
->>>>>>> 15e57f0 (update the reuirements.txt)
-=======
 mccabe==0.7.0
->>>>>>> c25481f (update the requirements.txt)
 mdurl==0.1.2
 mistune==3.2.0
 ml_dtypes==0.5.4
@@ -133,7 +125,6 @@ notebook==7.5.5
 notebook_shim==0.2.4
 npm==0.1.1
 numpy==2.4.4
-nvidia-nccl-cu12==2.29.7
 opt_einsum==3.4.0
 optional-django==0.1.0
 optree==0.19.0
