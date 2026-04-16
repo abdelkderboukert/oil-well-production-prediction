@@ -4,10 +4,8 @@ services:
 
   # ─── PostgreSQL Database ──────────────────────────────────────────────────
   db:
-    build:
-      context: ./UI/DB
-      dockerfile: dockerfile
-    container_name: wellsense-db
+    image: postgres:latest
+    container_name: oil-gas-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
