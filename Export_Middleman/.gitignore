@@ -1,0 +1,13 @@
+/target/
+
+.env
+.env.*
+!.env.example
+secrets.toml
+
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+*.log

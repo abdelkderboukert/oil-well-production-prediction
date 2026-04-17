@@ -1,0 +1,35 @@
+# --- Stage 1: Build Stage ---
+FROM rust:1.75-bookworm AS builder
+
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 1. Pre-build dependencies (Caching Layer)
+COPY Cargo.tom[l] Cargo.loc[k] ./
+# Create dummy export_script.rs so Cargo can build dependencies
+RUN echo "fn main() {}" > export_script.rs
+RUN cargo build --release
+RUN rm -f target/release/deps/export_job*
+RUN rm -f target/release/deps/oil_gas_export*
+
+# 2. Build the actual application
+COPY . .
+# CRITICAL: Touch the file so Cargo knows it was updated
+RUN touch export_script.rs 
+RUN cargo build --release
+
+# --- Stage 2: Runtime Stage ---
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# The compiled binary is named export_job because of the [[bin]] name in Cargo.toml
+COPY --from=builder /app/target/release/export_job /app/export_job
+
+ENV RUST_LOG=info
+ENV PYTHONUNBUFFERED=1 
+
+ENTRYPOINT ["/app/export_job"]
