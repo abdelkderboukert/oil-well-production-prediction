@@ -36,13 +36,13 @@ export default function Navbar() {
 
       {/* CTA */}
       <div className="hidden md:flex items-center gap-4">
-        <a href="#" className="font-mono text-xs tracking-wider text-oil-smoke hover:text-oil-light transition-colors">
+        {/* <a href="#" className="font-mono text-xs tracking-wider text-oil-smoke hover:text-oil-light transition-colors">
           Sign In
         </a>
         <a href="#"
           className="font-mono text-xs tracking-widest uppercase px-5 py-2.5 bg-oil-amber text-oil-black hover:bg-oil-gold transition-colors duration-300">
           Request Access
-        </a>
+        </a> */}
       </div>
 
       {/* Mobile toggle */}
