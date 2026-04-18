@@ -41,7 +41,7 @@ defusedxml==0.7.1
 deprecation==2.1.0
 dill==0.4.1
 Django==5.0.3
-django-celery==3.1.17
+django-celery==3.3.1
 django-cors-headers==4.3.1
 django-email-verification==0.3.3
 django-filter==24.3
