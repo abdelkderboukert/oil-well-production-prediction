@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { type AnalyzeResult, analyzeReport } from "../lib/api";
+import { type AnalyzeResult, analyzeReport, createBulkWells } from "../lib/api";
 
 function LoadingDots() {
   return (
@@ -108,6 +108,8 @@ export default function AnalyzerTab() {
   const [progress, setProgress] = useState<number | null>(null);
   const [results, setResults]   = useState<AnalyzeResult[] | null>(null);
   const [error, setError]       = useState<string | null>(null);
+  const [missingWells, setMissingWells] = useState<string[] | null>(null);
+  const [creatingWells, setCreatingWells] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef                = useRef<HTMLInputElement>(null);
 
@@ -141,12 +143,32 @@ export default function AnalyzerTab() {
           setResults((prev) => (prev ? [...prev, result] : [result]));
         }
       });
-    } catch (err: unknown) {
+    } catch (err: any) {
+      if (err.isMissingWells) {
+        setMissingWells(err.missingWells);
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Unknown error";
       setError(msg);
     } finally {
       setLoading(false);
       setProgress(null);
+    }
+  };
+
+  const handleCreateMissingWells = async () => {
+    if (!missingWells) return;
+    setCreatingWells(true);
+    try {
+       await createBulkWells(missingWells);
+       setMissingWells(null);
+       handleRun(); // Automatically retry!
+    } catch (err: any) {
+       const msg = err instanceof Error ? err.message : "Failed to create wells";
+       setError(msg);
+       setMissingWells(null);
+    } finally {
+       setCreatingWells(false);
     }
   };
 
@@ -256,6 +278,40 @@ export default function AnalyzerTab() {
           {results.map((r, i) => (
             <ResultCard key={i} r={r} />
           ))}
+        </div>
+      )}
+
+      {/* Missing Wells Modal */}
+      {missingWells && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-gray-200 mb-2">Unrecognized Wells Detected</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Your dataset contains wells that do not currently exist in the database. 
+              Would you like to automatically create these {missingWells.length} wells?
+            </p>
+            <div className="max-h-40 overflow-y-auto mb-6 bg-gray-950 rounded border border-gray-800 p-2">
+              <ul className="text-gray-300 text-xs font-mono space-y-1">
+                {missingWells.map(w => <li key={w}>• {w}</li>)}
+              </ul>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setMissingWells(null)}
+                className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors"
+                disabled={creatingWells}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleCreateMissingWells}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/20 transition-colors"
+                disabled={creatingWells}
+              >
+                {creatingWells ? 'Creating...' : 'Create Wells & Continue'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

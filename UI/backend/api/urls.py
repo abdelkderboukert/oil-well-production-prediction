@@ -8,6 +8,7 @@ from .views import (
     AnalyzeView, 
     ExportDataView, 
     ImportDataView,
+    BulkWellCreateView,
     reload_model_webhook
 )
 
@@ -16,9 +17,10 @@ router = DefaultRouter()
 
 # Register ViewSets only
 router.register(r'wells', WellViewSet, basename='well')
-router.register(r'production', WellProductionViewSet, basename='production')
-
 urlpatterns = [
+    # Custom Non-CRUD Well Endpoint MUST be above router to prevent PK interception
+    path('wells/bulk-create/', BulkWellCreateView.as_view(), name='bulk-well-create'),
+
     # Router-generated paths (standard CRUD)
     path('', include(router.urls)),
     

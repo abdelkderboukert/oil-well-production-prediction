@@ -90,7 +90,18 @@ export async function analyzeReport(
     method: "POST",
     body: formData,
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const text = await res.text();
+    try {
+      const errData = JSON.parse(text);
+      if (errData.error === "missing_wells" && Array.isArray(errData.missing_wells)) {
+        throw { isMissingWells: true, missingWells: errData.missing_wells };
+      }
+    } catch(e: any) {
+      if (e.isMissingWells) throw e;
+    }
+    throw new Error(text);
+  }
   
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No response body");
@@ -133,4 +144,13 @@ export async function fetchWells(): Promise<string[]> {
   const items = data.results ?? data;
   console.table(items);
   return items.map((w: { name: string }) => w.name);
+}
+
+export async function createBulkWells(wells: string[]): Promise<void> {
+  const res = await fetch(`${BASE}/wells/bulk-create/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wells }),
+  });
+  if (!res.ok) throw new Error(await res.text());
 }

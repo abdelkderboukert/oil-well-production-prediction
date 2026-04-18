@@ -46,9 +46,13 @@ FEATURES_LSTM = ["HOURS", "WHP", "WHT", "WLP", "C2M", "C3", "C4", "C5P", "H2O", 
 TARGETS = ["W_GAS", "S_GAS", "LPG_VOL", "LPG_MASS", "COND_VOL", "COND_MASS"]
 
 # Helper function to get DB data formatted for ML
-def get_well_history_df(well_name, days=7):
-    """Fetches the last N days of production for a well from DB and formats it for ML."""
-    qs = WellProduction.objects.filter(well__name=well_name).order_by('-date')[:days]
+def get_well_history_df(well_name, days=7, end_date=None):
+    """Fetches the last N days of production before an optional end_date for a well from DB."""
+    qs = WellProduction.objects.filter(well__name=well_name)
+    if end_date:
+        qs = qs.filter(date__lt=end_date)
+    qs = qs.order_by('-date')[:days]
+    
     if not qs.exists():
         return pd.DataFrame()
     
@@ -174,19 +178,47 @@ class AnalyzeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if 'WELL' not in daily_df.columns:
+            return Response({"error": "File must contain 'WELL' column."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Validation for missing wells
+        file_wells = daily_df['WELL'].dropna().unique()
+        existing_wells = dict(Well.objects.filter(name__in=file_wells).values_list('name', 'id'))
+        
+        missing_wells = [w for w in file_wells if w not in existing_wells and str(w).strip() != '0']
+        if missing_wells:
+            return Response({
+                "error": "missing_wells",
+                "message": "Please create these wells in the system before analyzing data.",
+                "missing_wells": missing_wells
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Pre-process NaNs for reliable saving, exactly like ImportDataView
+        daily_df.fillna(0, inplace=True)
+
         def stream_analysis():
             total_rows = len(daily_df)
             for i, (_, row) in enumerate(daily_df.iterrows()):
                 well = row.get("WELL")
                 actual_w_gas = row.get("W_GAS")
+                report_date = row.get("DATE")
 
                 if well is None or actual_w_gas is None:
                     continue
+                    
+                parsed_date = None
+                if pd.notna(report_date):
+                    try:
+                        parsed_date = pd.to_datetime(report_date).date()
+                    except Exception:
+                        pass
 
                 # Fetch historical comparison data directly from Database
-                well_history = get_well_history_df(well, days=7)
+                well_history = get_well_history_df(well, days=7, end_date=parsed_date)
 
                 if len(well_history) < 7:
+                    # Save it anyway to build history, but we can't analyze it
+                    self._save_production_record(existing_wells[well], parsed_date, row, False)
                     yield json.dumps({
                         "progress": int(((i + 1) / total_rows) * 100),
                         "result": {"well": well, "status": "insufficient_data", "message": "Need 7 days of history in DB"}
@@ -207,6 +239,10 @@ class AnalyzeView(APIView):
                 if diff_pct > 0.15:
                     input_row = {f: float(row[f]) for f in FEATURES}
                     culprit, expected_val = self._perform_rca(input_row, actual_w_gas)
+
+                    # Save record and tag it as anomaly!
+                    self._save_production_record(existing_wells[well], parsed_date, row, True)
+
                     yield json.dumps({
                         "progress": int(((i + 1) / total_rows) * 100),
                         "result": {
@@ -223,6 +259,9 @@ class AnalyzeView(APIView):
                         }
                     }) + "\n"
                 else:
+                    # Save normal un-tagged record
+                    self._save_production_record(existing_wells[well], parsed_date, row, False)
+                    
                     yield json.dumps({
                         "progress": int(((i + 1) / total_rows) * 100),
                         "result": {
@@ -261,6 +300,59 @@ class AnalyzeView(APIView):
 
         return best_feat, best_val
     
+    def _save_production_record(self, well_id, parsed_date, row, is_anomaly):
+        """Helper to rapidly save or update production records during data streaming"""
+        if not parsed_date:
+            return
+            
+        try:
+            WellProduction.objects.update_or_create(
+                well_id=well_id,
+                date=parsed_date,
+                defaults={
+                    "hours": row.get('HOURS', 24.0),
+                    "whp": row.get('WHP', 0),
+                    "wht": row.get('WHT', 0),
+                    "wlp": row.get('WLP', 0),
+                    "h2o": row.get('H2O', 0),
+                    "water": row.get('WATER', 0),
+                    "w_gas": row.get('W_GAS', 0),
+                    "s_gas": row.get('S_GAS', 0),
+                    "lpg_vol": row.get('LPG_VOL', 0),
+                    "lpg_mass": row.get('LPG_MASS', 0),
+                    "cond_vol": row.get('COND_VOL', 0),
+                    "cond_mass": row.get('COND_MASS', 0),
+                    "c2m": row.get('C2M') if row.get('C2M') != 0 else None,
+                    "c3": row.get('C3') if row.get('C3') != 0 else None,
+                    "c4": row.get('C4') if row.get('C4') != 0 else None,
+                    "c5p": row.get('C5P') if row.get('C5P') != 0 else None,
+                    "prodindex": row.get('prodindex') if row.get('prodindex') != 0 else None,
+                    "tag": is_anomaly
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to save production record inside AnalyzeView: {e}")
+
+class BulkWellCreateView(APIView):
+    """POST /api/wells/bulk-create/ — creates missing wells effortlessly"""
+    def post(self, request):
+        wells_data = request.data.get('wells', [])
+        if not wells_data:
+            return Response({"error": "No wells provided"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        created_count = 0
+        for w_name in wells_data:
+            Well.objects.get_or_create(
+                name=w_name,
+                defaults={
+                    "uwi": f"UWI-{w_name}",
+                    "well_type": "OIL",
+                    "total_depth": 0
+                }
+            )
+            created_count += 1
+            
+        return Response({"message": f"Successfully created {created_count} wells."}, status=status.HTTP_201_CREATED)
 
 class ExportDataView(APIView):
     """GET /api/export/ — Download all database production data as a CSV file."""
@@ -347,7 +439,7 @@ class ImportDataView(APIView):
         
         if missing_wells:
             return Response({
-                "error": "Missing Wells Found",
+                "error": "missing_wells",
                 "message": "Please create these wells in the system before importing their production data.",
                 "missing_wells": missing_wells
             }, status=status.HTTP_400_BAD_REQUEST)

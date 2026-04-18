@@ -66,13 +66,27 @@ class MLService:
             
         self._loaded = True
 
+    def reload_models(self):
+        """Forces a fresh reload of all models from disk/S3."""
+        logger.info("Forcing reload of all machine learning models...")
+        self._loaded = False
+        env = os.environ.get("ENVIRONMENT", "development").lower()
+        if env == "production":
+            self._load_from_s3()
+        else:
+            self._load_locally()
+        self._loaded = True
+
     def _load_locally(self):
         """Loads models from the local filesystem during development."""
         logger.info("DEVELOPMENT: Loading models from local storage...")
         
-        # PRO TIP: Using settings.BASE_DIR instead of a hardcoded "/home/Bluck/..." path 
-        # means another developer can clone your repo and run it without changing the code!
-        models_dir = os.path.join("/home/Bluck/rebo/oil-well-production-prediction/AI/models")#settings.BASE_DIR, "AI", "models"
+        # Use Django settings.BASE_DIR (UI/backend) to resolve the AI/models directory
+        import pathlib
+        if isinstance(settings.BASE_DIR, pathlib.Path):
+            models_dir = str(settings.BASE_DIR.parent.parent / "AI" / "models")
+        else:
+            models_dir = os.path.abspath(os.path.join(settings.BASE_DIR, "../../AI/models"))
         
         self.rf_model = joblib.load(os.path.join(models_dir, "rf_model.joblib"))
         self.lstm_model = tf.keras.models.load_model(os.path.join(models_dir, "production_model.keras"))
