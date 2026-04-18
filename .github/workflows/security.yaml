@@ -62,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["python"]
+        language: ["python", "javascript"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -147,6 +147,68 @@ jobs:
           name: bandit-security-report
           path: bandit-report.json
 
+  # Frontend dependency scanning
+  dependency-check-frontend:
+    name: Check Node.js Dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "UI/frontend/package-lock.json"
+
+      - name: Run npm audit
+        run: |
+          cd UI/frontend
+          npm audit --json > npm-audit-report.json || true
+
+      - name: Upload npm audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-security-report
+          path: UI/frontend/npm-audit-report.json
+
+  # Rust dependency scanning
+  dependency-check-rust:
+    name: Check Rust Dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Export_Middleman
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo audit
+        run: |
+          cd Export_Middleman
+          cargo audit --json > cargo-audit-report.json || true
+
+      - name: Upload cargo audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cargo-audit-security-report
+          path: Export_Middleman/cargo-audit-report.json
+
   # Code quality and linting
   code-quality:
     name: Code Quality & Linting
@@ -170,20 +232,17 @@ jobs:
 
       - name: Run Black formatter check
         run: |
-          cd AI
-          black --check src/ main.py
-
-      # - name: Run isort import sorter check
-      #   run: isort --check-only src/ main.py
+          black --check AI/src/ AI/main.py
+          black --check UI/backend/ || true
 
       - name: Run Pylint
         run: |
-          cd AI
           pylint AI/src/ AI/main.py -r n --output-format=json > pylint-report.json || true
 
       - name: Run Flake8
         run: |
           flake8 AI/src/ AI/main.py --format=json > flake8-report.json || true
+          flake8 UI/backend/ --format=json > backend-flake8-report.json || true
 
       - name: Upload quality reports
         uses: actions/upload-artifact@v4
@@ -193,6 +252,7 @@ jobs:
           path: |
             pylint-report.json
             flake8-report.json
+            backend-flake8-report.json
 
   # YAML and configuration file validation
   validate-config:
@@ -231,6 +291,22 @@ jobs:
     needs:
       - secrets-scan
       - code-quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component_name: "ai-pipeline"
+            context: "./AI"
+            dockerfile: "dockerfile"
+          - component_name: "ui-backend"
+            context: "./UI/backend"
+            dockerfile: "dockerfile"
+          - component_name: "ui-frontend"
+            context: "./UI/frontend"
+            dockerfile: "dockerfile"
+          - component_name: "export-middleman"
+            context: "./Export_Middleman"
+            dockerfile: "dockerfile"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -250,17 +326,18 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component_name }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
+            type=sha,prefix=
+            type=raw,value=${{ github.sha }}
 
       - name: Build Docker image for scanning
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -302,7 +379,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
