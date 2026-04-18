@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FEATURES, TARGETS, type FeatureInputs, type TargetOutputs, predictProduction } from "../lib/api";
+import { FEATURES, TARGETS, type FeatureInputs, type TargetOutputs, predictProduction, type Feature } from "../../lib/api";
 
 // Slider config: label, min, max, default, step
 const SLIDER_CONFIG: Record<string, { label: string; min: number; max: number; defaultVal: number; step: number; unit: string }> = {
@@ -25,9 +25,9 @@ const TARGET_LABELS: Record<string, { label: string; unit: string }> = {
 function LoadingDots() {
   return (
     <span className="inline-flex gap-1 ml-2">
-      <span className="loading-dot w-1.5 h-1.5 rounded-full bg-white inline-block" />
-      <span className="loading-dot w-1.5 h-1.5 rounded-full bg-white inline-block" />
-      <span className="loading-dot w-1.5 h-1.5 rounded-full bg-white inline-block" />
+      <span className="loading-dot w-1.5 h-1.5 rounded-full bg-oil-light inline-block" />
+      <span className="loading-dot w-1.5 h-1.5 rounded-full bg-oil-light inline-block" />
+      <span className="loading-dot w-1.5 h-1.5 rounded-full bg-oil-light inline-block" />
     </span>
   );
 }
@@ -60,8 +60,8 @@ export default function VFMTab() {
   };
 
   return (
-    <div className="animate-in">
-      <p className="text-gray-400 mb-8 text-sm leading-relaxed max-w-2xl">
+    <div className="animate-fade-in w-full">
+      <p className="text-oil-mist mb-8 text-sm leading-relaxed max-w-2xl font-body">
         Adjust the operating parameters using the sliders below. The Random Forest model will
         instantly compute all six production metrics from the given wellhead conditions.
       </p>
@@ -71,12 +71,12 @@ export default function VFMTab() {
         {FEATURES.map((feat) => {
           const cfg = SLIDER_CONFIG[feat];
           return (
-            <div key={feat} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div key={feat} className="bg-oil-deep/80 backdrop-blur border border-oil-border rounded-xl p-5 hover:border-oil-smoke transition-colors">
               <div className="flex justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <span className="text-[10px] font-semibold text-oil-smoke uppercase tracking-widest font-mono">
                   {cfg.label}
                 </span>
-                <span className="text-sm font-mono font-bold text-indigo-400">
+                <span className="text-sm font-mono font-bold text-oil-amber">
                   {inputs[feat as Feature]}{cfg.unit}
                 </span>
               </div>
@@ -87,11 +87,11 @@ export default function VFMTab() {
                 step={cfg.step}
                 value={inputs[feat as Feature]}
                 onChange={(e) => handleSlider(feat, parseFloat(e.target.value))}
-                className="w-full"
+                className="w-full accent-oil-amber"
               />
               <div className="flex justify-between mt-1">
-                <span className="text-xs text-gray-600">{cfg.min}{cfg.unit}</span>
-                <span className="text-xs text-gray-600">{cfg.max}{cfg.unit}</span>
+                <span className="text-xs text-oil-smoke font-mono">{cfg.min}{cfg.unit}</span>
+                <span className="text-xs text-oil-smoke font-mono">{cfg.max}{cfg.unit}</span>
               </div>
             </div>
           );
@@ -102,37 +102,39 @@ export default function VFMTab() {
       <button
         onClick={handlePredict}
         disabled={loading}
-        className="w-full md:w-auto px-8 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all duration-200 shadow-lg shadow-indigo-900/40 hover:shadow-indigo-700/50 flex items-center gap-2"
+        className="w-full md:w-auto px-8 py-4 bg-oil-amber hover:bg-oil-gold disabled:opacity-60 disabled:cursor-not-allowed text-oil-black font-mono tracking-widest text-xs uppercase transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden group"
       >
-        {loading ? <>Running Prediction<LoadingDots /></> : "Run Random Forest Prediction"}
+        <span className="relative z-10 flex items-center gap-2">
+          {loading ? <>Running<LoadingDots /></> : "Run RF Prediction →"}
+        </span>
       </button>
 
       {/* Error */}
       {error && (
-        <div className="mt-6 p-4 rounded-lg border border-yellow-800 bg-yellow-950/40 text-yellow-300 text-sm">
+        <div className="mt-6 p-4 rounded-lg border border-oil-rust/50 bg-oil-rust/10 text-red-300 text-sm font-mono">
           {error}
         </div>
       )}
 
       {/* Results */}
       {results && (
-        <div className="mt-8 animate-in">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <div className="mt-12 animate-fade-up">
+          <h3 className="text-[10px] font-semibold text-oil-smoke uppercase tracking-widest font-mono mb-4">
             Predicted Production Metrics
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {TARGETS.map((t) => (
               <div
                 key={t}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-emerald-800 transition-colors duration-200"
+                className="bg-oil-surface/50 border border-oil-border rounded-xl p-5 hover:bg-oil-surface transition-colors duration-300 relative overflow-hidden"
               >
-                <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                <div className="text-[10px] text-oil-smoke tracking-widest mb-1 font-mono uppercase">
                   {TARGET_LABELS[t].label}
                 </div>
-                <div className="text-2xl font-bold font-mono text-emerald-400">
+                <div className="text-2xl font-black font-display text-oil-light">
                   {results[t].toLocaleString("en-US", { maximumFractionDigits: 2 })}
                 </div>
-                <div className="text-xs text-gray-600 mt-1">{TARGET_LABELS[t].unit}</div>
+                <div className="text-xs text-oil-mist mt-1 font-mono">{TARGET_LABELS[t].unit}</div>
               </div>
             ))}
           </div>
