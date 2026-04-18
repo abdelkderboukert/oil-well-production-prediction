@@ -67,7 +67,6 @@ export async function predictProduction(
     body: JSON.stringify(inputs),
   });
   if (!res.ok) throw new Error(await res.text());
-  console.log(res.json());
   return res.json();
 }
 
@@ -81,7 +80,10 @@ export async function forecastWell(well: string): Promise<ForecastResponse> {
   return res.json();
 }
 
-export async function analyzeReport(file: File): Promise<AnalyzeResponse> {
+export async function analyzeReport(
+  file: File,
+  onProgress?: (pct: number, result: AnalyzeResult | null) => void
+): Promise<AnalyzeResponse> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch(`${BASE}/ml/analyze/`, {
@@ -89,7 +91,38 @@ export async function analyzeReport(file: File): Promise<AnalyzeResponse> {
     body: formData,
   });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  const finalResults: AnalyzeResult[] = [];
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const msg = JSON.parse(line);
+        if (msg.progress !== undefined) {
+          onProgress?.(msg.progress, msg.result);
+        }
+        if (msg.result) {
+          finalResults.push(msg.result);
+        }
+      } catch (err) {
+        console.error("Failed to parse NDJSON line", line);
+      }
+    }
+  }
+  return { results: finalResults };
 }
 
 export async function fetchWells(): Promise<string[]> {

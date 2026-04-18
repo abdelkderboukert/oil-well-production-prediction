@@ -16,7 +16,8 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
 
 import csv
-from django.http import HttpResponse
+import json
+from django.http import HttpResponse, StreamingHttpResponse
 
 from .ml_service import MLService
 
@@ -41,10 +42,7 @@ class WellProductionViewSet(viewsets.ModelViewSet):
 ml = MLService()
 
 FEATURES = ["HOURS", "WHP", "WHT", "WLP", "H2O", "WATER"]
-FEATURES_LSTM = [
-    'hours', 'whp', 'wht', 'wlp', 'h2o', 'water', 
-    'prodindex', 'c2m', 'c3', 'c4' 
-]
+FEATURES_LSTM = ["HOURS", "WHP", "WHT", "WLP", "C2M", "C3", "C4", "C5P", "H2O", "WATER"]
 TARGETS = ["W_GAS", "S_GAS", "LPG_VOL", "LPG_MASS", "COND_VOL", "COND_MASS"]
 
 # Helper function to get DB data formatted for ML
@@ -132,7 +130,7 @@ class ForecastView(APIView):
             )
 
         # 2. Prepare data and run model
-        seq_features = well_data[FEATURES].values#
+        seq_features = well_data[FEATURES_LSTM]
         seq_scaled = ml.feature_scaler.transform(seq_features)
         seq_3d = np.array([seq_scaled])
 
@@ -176,58 +174,67 @@ class AnalyzeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        results = []
+        def stream_analysis():
+            total_rows = len(daily_df)
+            for i, (_, row) in enumerate(daily_df.iterrows()):
+                well = row.get("WELL")
+                actual_w_gas = row.get("W_GAS")
 
-        for _, row in daily_df.iterrows():
-            well = row.get("WELL")
-            actual_w_gas = row.get("W_GAS")
+                if well is None or actual_w_gas is None:
+                    continue
 
-            if well is None or actual_w_gas is None:
-                continue
+                # Fetch historical comparison data directly from Database
+                well_history = get_well_history_df(well, days=7)
 
-            # Fetch historical comparison data directly from Database
-            well_history = get_well_history_df(well, days=7)
+                if len(well_history) < 7:
+                    yield json.dumps({
+                        "progress": int(((i + 1) / total_rows) * 100),
+                        "result": {"well": well, "status": "insufficient_data", "message": "Need 7 days of history in DB"}
+                    }) + "\n"
+                    continue
 
-            if len(well_history) < 7:
-                results.append({"well": well, "status": "insufficient_data", "message": "Need 7 days of history in DB"})
-                continue
+                seq_features = well_history[FEATURES_LSTM]
+                seq_scaled = ml.feature_scaler.transform(seq_features)
+                seq_3d = np.array([seq_scaled])
+                
+                pred_scaled = ml.lstm_model.predict(seq_3d, verbose=0)
+                lstm_pred = ml.target_scaler.inverse_transform(pred_scaled)[0]
+                predicted_w_gas = float(lstm_pred[0])
+                actual_w_gas = float(actual_w_gas)
 
-            seq_features = well_history[FEATURES].values
-            seq_scaled = ml.feature_scaler.transform(seq_features)
-            seq_3d = np.array([seq_scaled])
-            
-            pred_scaled = ml.lstm_model.predict(seq_3d, verbose=0)
-            lstm_pred = ml.target_scaler.inverse_transform(pred_scaled)[0]
-            predicted_w_gas = float(lstm_pred[0])
-            actual_w_gas = float(actual_w_gas)
+                diff_pct = abs(actual_w_gas - predicted_w_gas) / max(actual_w_gas, 1)
 
-            diff_pct = abs(actual_w_gas - predicted_w_gas) / max(actual_w_gas, 1)
+                if diff_pct > 0.15:
+                    input_row = {f: float(row[f]) for f in FEATURES}
+                    culprit, expected_val = self._perform_rca(input_row, actual_w_gas)
+                    yield json.dumps({
+                        "progress": int(((i + 1) / total_rows) * 100),
+                        "result": {
+                            "well": well,
+                            "status": "anomaly",
+                            "predicted_w_gas": round(predicted_w_gas, 2),
+                            "reported_w_gas": round(actual_w_gas, 2),
+                            "error_pct": round(diff_pct * 100, 2),
+                            "rca": {
+                                "culprit_feature": culprit,
+                                "reported_value": round(input_row[culprit], 2),
+                                "expected_value": round(float(expected_val), 2),
+                            },
+                        }
+                    }) + "\n"
+                else:
+                    yield json.dumps({
+                        "progress": int(((i + 1) / total_rows) * 100),
+                        "result": {
+                            "well": well,
+                            "status": "normal",
+                            "predicted_w_gas": round(predicted_w_gas, 2),
+                            "reported_w_gas": round(actual_w_gas, 2),
+                            "error_pct": round(diff_pct * 100, 2),
+                        }
+                    }) + "\n"
 
-            if diff_pct > 0.15:
-                input_row = {f: float(row[f]) for f in FEATURES}
-                culprit, expected_val = self._perform_rca(input_row, actual_w_gas)
-                results.append({
-                    "well": well,
-                    "status": "anomaly",
-                    "predicted_w_gas": round(predicted_w_gas, 2),
-                    "reported_w_gas": round(actual_w_gas, 2),
-                    "error_pct": round(diff_pct * 100, 2),
-                    "rca": {
-                        "culprit_feature": culprit,
-                        "reported_value": round(input_row[culprit], 2),
-                        "expected_value": round(float(expected_val), 2),
-                    },
-                })
-            else:
-                results.append({
-                    "well": well,
-                    "status": "normal",
-                    "predicted_w_gas": round(predicted_w_gas, 2),
-                    "reported_w_gas": round(actual_w_gas, 2),
-                    "error_pct": round(diff_pct * 100, 2),
-                })
-
-        return Response({"results": results})
+        return StreamingHttpResponse(stream_analysis(), content_type="application/x-ndjson")
 
     def _perform_rca(self, input_row: dict, actual_w_gas: float):
         best_feat = None

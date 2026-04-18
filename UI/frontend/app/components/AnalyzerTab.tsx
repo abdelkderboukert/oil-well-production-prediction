@@ -105,6 +105,7 @@ function ResultCard({ r }: { r: AnalyzeResult }) {
 export default function AnalyzerTab() {
   const [file, setFile]         = useState<File | null>(null);
   const [loading, setLoading]   = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [results, setResults]   = useState<AnalyzeResult[] | null>(null);
   const [error, setError]       = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -130,15 +131,22 @@ export default function AnalyzerTab() {
   const handleRun = async () => {
     if (!file) return;
     setLoading(true);
+    setProgress(0);
+    setResults([]);
     setError(null);
     try {
-      const data = await analyzeReport(file);
-      setResults(data.results);
+      await analyzeReport(file, (pct, result) => {
+        setProgress(pct);
+        if (result) {
+          setResults((prev) => (prev ? [...prev, result] : [result]));
+        }
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       setError(msg);
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   };
 
@@ -188,9 +196,23 @@ export default function AnalyzerTab() {
         <button
           onClick={handleRun}
           disabled={!file || loading}
-          className="px-8 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all duration-200 shadow-lg shadow-indigo-900/40 flex items-center"
+          className="relative overflow-hidden px-8 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-80 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all duration-200 shadow-lg shadow-indigo-900/40 flex items-center"
         >
-          {loading ? <>Running Analysis<LoadingDots /></> : "Run Anomaly Check & RCA"}
+          {loading && progress !== null && (
+            <div
+              className="absolute inset-y-0 left-0 bg-indigo-400/30 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          )}
+          <div className="relative z-10 flex items-center">
+            {loading ? (
+              <>
+                Processing... {progress}% <LoadingDots />
+              </>
+            ) : (
+              "Run Anomaly Check & RCA"
+            )}
+          </div>
         </button>
         {file && (
           <button
@@ -203,7 +225,7 @@ export default function AnalyzerTab() {
       </div>
 
       {/* Error */}
-      {error && (
+      {error && !loading && (
         <div className="mb-6 p-4 rounded-lg border border-red-900 bg-red-950/30 text-red-300 text-sm">
           {error}
         </div>
