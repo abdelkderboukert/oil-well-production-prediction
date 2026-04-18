@@ -68,6 +68,13 @@ graph TB
         LAYOUT --> PAGE
     end
 
+    subgraph EXPORT ["Rust Export Service  —  Export_Middleman/"]
+        direction TB
+        EXP_CARGO["Cargo.toml"]
+        EXP_MAIN["export_script.rs\nData Exporter"]
+        EXP_CARGO --> EXP_MAIN
+    end
+
     subgraph LEGACY_UI ["Streamlit UI  —  UI/app.py"]
         STREAMLIT["app.py\nVFM / LSTM / Analyzer Tabs"]
     end
@@ -83,7 +90,8 @@ graph TB
     subgraph DEPLOY ["Deployment"]
         direction LR
         COMPOSE["docker-compose.yml\nLocal Stack"]
-        K8S_DEP["deploy/k8s/\ndeployment.yaml + service.yaml"]
+        HELM["deploy/oil-gas-platform/\nHelm Chart"]
+        TERRAFORM["infrastructure/\nAWS EKS + RDS"]
         ARGOCD["deploy/argocd/\nArgoCD Application"]
         GHCR["ghcr.io\nContainer Registry"]
     end
@@ -151,6 +159,10 @@ oil-well-production-prediction/
 |       |   +-- globals.css             # Vanilla CSS design system
 |       +-- public/                     # Static assets
 |
++-- Export_Middleman/                   # Rust high-performance export worker
+|   +-- export_script.rs                # Core export logic (S3 upload, CSV parsing)
+|   +-- Cargo.toml                      # Rust dependencies
+|
 +-- .github/workflows/
 |   +-- CI.yaml                         # Lint and test on every push
 |   +-- security.yaml                   # CodeQL, Trivy, Bandit, Semgrep, pip-audit
@@ -158,10 +170,13 @@ oil-well-production-prediction/
 |   +-- argocd-sync.yaml                # GitOps reconciliation trigger
 |
 +-- deploy/
-|   +-- k8s/
-|   |   +-- deployment.yaml             # Kubernetes Deployment
-|   |   +-- service.yaml                # Kubernetes Service
 |   +-- argocd/                         # ArgoCD Application definition
+|   +-- oil-gas-platform/               # Helm chart for Kubernetes deployment
+|
++-- infrastructure/                     # Terraform modules for AWS
+|   +-- vpc.tf                          # Networking
+|   +-- eks.tf                          # Kubernetes cluster
+|   +-- rds.tf                          # Postgres Database
 |
 +-- docs/                               # Docker registry documentation
 +-- data/raw/data.csv                   # Source production dataset
@@ -338,13 +353,25 @@ docker run --rm \
 
 ---
 
-## Kubernetes Deployment
+## Infrastructure & Kubernetes Deployment
 
+The project uses Terraform to provision AWS cloud resources and Helm for Kubernetes application packaging and deployment.
+
+### 1. Provision Infrastructure
 ```bash
-kubectl apply -f deploy/k8s/
+cd infrastructure
+terraform init
+terraform apply
+```
+This stands up the EKS cluster, RDS instances, and related networking on AWS.
+
+### 2. Deploy Helm Chart
+```bash
+helm upgrade --install oil-gas-platform ./deploy/oil-gas-platform -n production --create-namespace
 ```
 
-ArgoCD GitOps sync is managed via `.github/workflows/argocd-sync.yaml` and `deploy/argocd/`.
+### 3. GitOps with ArgoCD
+ArgoCD GitOps sync is managed via `.github/workflows/argocd-sync.yaml` and the manifest located at `deploy/argocd/application.yaml`.
 
 ---
 
