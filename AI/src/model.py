@@ -10,6 +10,8 @@ from sklearn.ensemble import RandomForestRegressor
 import joblib
 import logging
 import os
+import boto3
+import tempfile
 
 # ==========================================
 # 🧠 1. LSTM MODEL (For Forecasting)
@@ -27,10 +29,61 @@ def build_lstm_model(time_steps, n_features, n_outputs):
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
     return model
 
-def save_lstm_model(model, filepath="models/production_model.keras"):
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    model.save(filepath)
-    logging.info(f"LSTM Model successfully saved to {filepath}")
+def save_lstm_model(model, local_filepath="models/production_model.keras", s3_key="models/production_model.keras"):
+    """
+    Saves the model locally if in development, or to S3 if in production.
+    """
+    # Check the environment (defaults to 'development' if not set)
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    
+    if env == "production":
+        # --- PRODUCTION: Push to S3 ---
+        bucket_name = os.environ.get("S3_BUCKET_NAME")
+        if not bucket_name:
+            raise ValueError("S3_BUCKET_NAME environment variable is missing in production!")
+            
+        s3_client = boto3.client('s3')
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_filepath = os.path.join(temp_dir, "temp_model.keras")
+            model.save(temp_filepath)
+            
+            try:
+                s3_client.upload_file(temp_filepath, bucket_name, s3_key)
+                logging.info(f"PRODUCTION: Model successfully pushed to s3://{bucket_name}/{s3_key}")
+            except Exception as e:
+                logging.error(f"Failed to push model to S3: {e}")
+                raise e
+    else:
+        # --- DEVELOPMENT: Save locally ---
+        os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
+        model.save(local_filepath)
+        logging.info(f"DEVELOPMENT: Model saved locally to {local_filepath}")
+
+
+def save_lstm_model_to_s3(model, bucket_name, s3_key="models/production_model.keras"):
+    """
+    Saves a Keras model to a temporary local file, uploads it to S3, 
+    and automatically cleans up the local file.
+    """
+    # Initialize the S3 client (AWS Batch automatically provides credentials via IAM roles)
+    s3_client = boto3.client('s3')
+    
+    # Create a temporary directory that self-destructs when the block ends
+    with tempfile.TemporaryDirectory() as temp_dir:
+        local_filepath = os.path.join(temp_dir, "temp_model.keras")
+        
+        # 1. Save the model locally inside the temp folder
+        model.save(local_filepath)
+        logging.info("LSTM Model successfully compiled and saved to temporary storage.")
+        
+        # 2. Upload the file to S3
+        try:
+            s3_client.upload_file(local_filepath, bucket_name, s3_key)
+            logging.info(f"LSTM Model successfully pushed to s3://{bucket_name}/{s3_key}")
+        except Exception as e:
+            logging.error(f"Failed to push model to S3: {e}")
+            raise e
 
 # ==========================================
 # 🌲 2. RANDOM FOREST MODEL (For Anomalies)
@@ -60,3 +113,34 @@ def save_rf_model(model, filepath="models/rf_model.joblib"):
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     joblib.dump(model, filepath)
     logging.info(f"Random Forest Model successfully saved to {filepath}")
+
+def save_rf_model(model, local_filepath="models/rf_model.joblib", s3_key="models/rf_model.joblib"):
+    """
+    Saves the model locally if in development, or to S3 if in production.
+    """
+    # Check the environment (defaults to 'development' if not set)
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    
+    if env == "production":
+        # --- PRODUCTION: Push to S3 ---
+        bucket_name = os.environ.get("S3_BUCKET_NAME")
+        if not bucket_name:
+            raise ValueError("S3_BUCKET_NAME environment variable is missing in production!")
+            
+        s3_client = boto3.client('s3')
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_filepath = os.path.join(temp_dir, "temp_model.keras")
+            model.save(temp_filepath)
+            
+            try:
+                s3_client.upload_file(temp_filepath, bucket_name, s3_key)
+                logging.info(f"PRODUCTION: Model successfully pushed to s3://{bucket_name}/{s3_key}")
+            except Exception as e:
+                logging.error(f"Failed to push model to S3: {e}")
+                raise e
+    else:
+        # --- DEVELOPMENT: Save locally ---
+        os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
+        model.save(local_filepath)
+        logging.info(f"DEVELOPMENT: Model saved locally to {local_filepath}")

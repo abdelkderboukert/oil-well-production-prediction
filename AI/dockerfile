@@ -23,7 +23,10 @@ RUN pip install --upgrade pip setuptools wheel && \
 FROM python:3.13-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    ENVIRONMENT=development \
+    S3_BUCKET_NAME=your-production-data-bucket \
+    AWS_REGION=us-east-1
 
 WORKDIR /app
 

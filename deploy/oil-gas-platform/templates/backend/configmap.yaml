@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+data:
+  ENVIRONMENT: {{ .Values.global.environment }}
+  AWS_REGION: {{ .Values.global.awsRegion }}
+  S3_BUCKET_NAME: {{ .Values.global.s3BucketName }}

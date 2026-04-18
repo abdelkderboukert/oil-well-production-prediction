@@ -7,7 +7,8 @@ from .views import (
     ForecastView, 
     AnalyzeView, 
     ExportDataView, 
-    ImportDataView
+    ImportDataView,
+    reload_model_webhook
 )
 
 # Initialize Router
@@ -29,4 +30,6 @@ urlpatterns = [
     # Data I/O Endpoints
     path('export/', ExportDataView.as_view(), name='export-csv'),
     path('import/', ImportDataView.as_view(), name='import-csv'),
+    path('webhooks/reload-models/', reload_model_webhook, name='ml_reload_webhook'),
+    
 ]

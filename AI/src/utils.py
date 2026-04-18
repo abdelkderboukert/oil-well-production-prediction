@@ -6,6 +6,32 @@ Provides helper functions for configuration and feature leakage checking for Mul
 import yaml
 import logging
 import pandas as pd
+import requests
+import os
+import logging
+
+def notify_django_to_reload():
+    """Pings the Django backend to tell it to fetch the new S3 models."""
+    
+    # In production, these come from your AWS Batch Environment Variables
+    webhook_url = os.environ.get("DJANGO_WEBHOOK_URL", "http://127.0.0.1:8000/api/webhooks/reload-models/")
+    webhook_secret = os.environ.get("WEBHOOK_SECRET", "my-super-secret-dev-token")
+    
+    logging.info(f"Notifying Django backend at {webhook_url}...")
+    
+    headers = {"X-Webhook-Token": webhook_secret}
+    
+    try:
+        response = requests.post(webhook_url, headers=headers)
+        
+        if response.status_code == 200:
+            logging.info("SUCCESS: Django acknowledged and reloaded the model in RAM!")
+        else:
+            logging.error(f"Django returned an error: {response.status_code} - {response.text}")
+            
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Failed to connect to Django webhook: {e}")
+
 
 logging.basicConfig(
     level=logging.INFO,

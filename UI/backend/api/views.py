@@ -3,9 +3,14 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import *
 from .serializers import WellSerializer, WellProductionSerializer
 import numpy as np
+import os
+import logging
+from django.http import JsonResponse
 import pandas as pd
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import transaction
@@ -14,6 +19,8 @@ import csv
 from django.http import HttpResponse
 
 from .ml_service import MLService
+
+logger = logging.getLogger(__name__)
 
 class WellViewSet(viewsets.ModelViewSet):
     queryset = Well.objects.all().order_by('name')
@@ -34,6 +41,10 @@ class WellProductionViewSet(viewsets.ModelViewSet):
 ml = MLService()
 
 FEATURES = ["HOURS", "WHP", "WHT", "WLP", "H2O", "WATER"]
+FEATURES_LSTM = [
+    'hours', 'whp', 'wht', 'wlp', 'h2o', 'water', 
+    'prodindex', 'c2m', 'c3', 'c4' 
+]
 TARGETS = ["W_GAS", "S_GAS", "LPG_VOL", "LPG_MASS", "COND_VOL", "COND_MASS"]
 
 # Helper function to get DB data formatted for ML
@@ -121,7 +132,7 @@ class ForecastView(APIView):
             )
 
         # 2. Prepare data and run model
-        seq_features = well_data[FEATURES].values
+        seq_features = well_data[FEATURES].values#
         seq_scaled = ml.feature_scaler.transform(seq_features)
         seq_3d = np.array([seq_scaled])
 
@@ -393,4 +404,22 @@ class ImportDataView(APIView):
             "rows_processed": len(production_records)
         }, status=status.HTTP_201_CREATED)
     
-    ###hi ther this is just for testing
+@csrf_exempt  # Exempt because an external script is calling it, not a browser
+@require_POST
+def reload_model_webhook(request):
+    # 1. Security Check: Verify the secret token
+    provided_token = request.headers.get("X-Webhook-Token")
+    expected_token = os.environ.get("WEBHOOK_SECRET", "my-super-secret-dev-token")
+    
+    if provided_token != expected_token:
+        logger.warning("Unauthorized attempt to reload ML models!")
+        return JsonResponse({"error": "Unauthorized"}, status=401)
+        
+    # 2. Trigger the Hot-Swap
+    try:
+        # Call our new method!
+        MLService().reload_models()
+        return JsonResponse({"message": "Success: Models reloaded into RAM."})
+    except Exception as e:
+        logger.error(f"Failed to reload models: {e}")
+        return JsonResponse({"error": str(e)}, status=500)

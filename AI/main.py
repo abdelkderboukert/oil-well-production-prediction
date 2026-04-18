@@ -6,7 +6,7 @@ Trains BOTH the LSTM and Random Forest for MULTI-TARGET Regression.
 import logging
 import json
 import os
-from src.utils import load_config, check_feature_leakage
+from src.utils import load_config, check_feature_leakage, notify_django_to_reload
 from src.ingestion import load_raw_data
 from src.preprocessing import clean_data
 from src.train import train_and_evaluate_lstm, train_and_evaluate_rf
@@ -69,6 +69,7 @@ def main():
     # Since y is a 2D array now, we slice [:, 0] to just plot the W_GAS predictions
     plot_actual_vs_predicted(lstm_y[:, 0], lstm_pred[:, 0], filepath=f"plots/actual_vs_predicted_{primary_target}.png")
     plot_well_time_series(clean_df, well_name='TFT-302', target_col=primary_target)
+    notify_django_to_reload()
 
     logging.info("\n🎉 Pipeline execution completed successfully! Multi-Output models are ready.")
 

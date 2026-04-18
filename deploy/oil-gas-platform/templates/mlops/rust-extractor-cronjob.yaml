@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rust-extractor
+spec:
+  schedule: {{ .Values.mlops.rustExtractor.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: oil-gas-app-sa # <-- CRITICAL FOR AWS PERMISSIONS
+          containers:
+            - name: extractor
+              image: {{ .Values.mlops.rustExtractor.image }}
+              env:
+                - name: ENVIRONMENT
+                  value: {{ .Values.global.environment }}
+                - name: AWS_REGION
+                  value: {{ .Values.global.awsRegion }}
+                - name: S3_BUCKET_NAME
+                  value: {{ .Values.global.s3BucketName }}
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: backend-secret-k8s
+                      key: DATABASE_URL

@@ -1,0 +1,46 @@
+# Global Variables
+global:
+  environment: production
+  awsRegion: us-east-1
+  s3BucketName: your-production-data-bucket
+  awsIamRoleArn: arn:aws:iam::123456789012:role/OilGasEksAccessRole
+
+# Frontend (Next.js)
+frontend:
+  image: your-docker-repo/nextjs-frontend:latest
+  port: 3000
+  hpa:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# Backend (Django)
+backend:
+  image: your-docker-repo/django-backend:latest
+  port: 8000
+  hpa:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+# MLOps
+mlops:
+  rustExtractor:
+    image: your-docker-repo/rust-extractor:latest
+    schedule: "0 0 * * *" # Runs every midnight
+  pythonTrainer:
+    image: your-docker-repo/python-trainer:latest

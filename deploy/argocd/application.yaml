@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/abdelkderboukert/oil-well-production-prediction
     targetRevision: HEAD
-    path: deploy/k8s
+    path: deploy/oil-gas-platform
   destination:
     server: https://kubernetes.default.svc
     namespace: oil-well-production-prediction
