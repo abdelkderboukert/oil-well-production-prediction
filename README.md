@@ -295,7 +295,7 @@ Results are written to `reports/model_metrics.json` after each training run.
 
 The following diagram describes the end-to-end MLOps pipeline, from code push through security scanning, model training, image build, and GitOps deployment.
 
-![MLOps Pipeline Diagram](.github/mlops_pipeline_diagram.svg)
+![MLOps Pipeline Diagram](.github/github_workflows_dark_styled_v1.svg)
 
 | Workflow | File | Trigger | Purpose |
 |---|---|---|---|
