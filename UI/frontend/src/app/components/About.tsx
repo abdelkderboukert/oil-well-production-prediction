@@ -25,7 +25,7 @@ export default function About() {
           </div>
           <div className="md:w-1/2 flex flex-col justify-between gap-8">
             <p className="font-body text-base text-oil-smoke leading-relaxed">
-              We deliver a suite of AI-driven tools calibrated to your field's unique conditions.
+              We deliver a suite of AI-driven tools calibrated to your field&apos;s unique conditions.
               Whether you manage a single well or a multi-basin portfolio, PetroAI provides the
               ideal analytical layer to maximize recovery, prevent failures, and cut operating costs.
             </p>

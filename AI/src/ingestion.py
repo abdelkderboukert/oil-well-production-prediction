@@ -12,17 +12,17 @@
 # def load_raw_data(filepath):
 #     """
 #     Load raw CSV data into a Pandas DataFrame.
-    
+
 #     Parameters
 #     ----------
 #     filepath : str
 #         Path to the CSV file containing raw data.
-    
+
 #     Returns
 #     -------
 #     pd.DataFrame
 #         Loaded dataframe with raw data.
-    
+
 #     Raises
 #     ------
 #     FileNotFoundError
@@ -46,34 +46,41 @@ import logging
 import boto3
 import tempfile
 
-def load_raw_data(local_filepath="data/raw_data.csv", s3_key="exports/training_data.csv"):
+
+def load_raw_data(
+    local_filepath="data/raw_data.csv", s3_key="exports/training_data.csv"
+):
     """
-    Load raw CSV data into a Pandas DataFrame. 
+    Load raw CSV data into a Pandas DataFrame.
     Reads locally in development or from S3 in production.
-    
+
     Parameters
     ----------
     local_filepath : str
         Path to the local CSV file (used in development).
     s3_key : str
         The S3 key/path to the CSV file (used in production).
-        
+
     Returns
     -------
     pd.DataFrame
         Loaded dataframe with raw data.
     """
     env = os.environ.get("ENVIRONMENT", "development").lower()
-    
+
     if env == "production":
         # --- PRODUCTION: Download from S3 ---
         bucket_name = os.environ.get("S3_BUCKET_NAME")
         if not bucket_name:
-            raise ValueError("S3_BUCKET_NAME environment variable is missing in production!")
-            
-        logging.info(f"PRODUCTION: Downloading raw data from s3://{bucket_name}/{s3_key}...")
-        s3_client = boto3.client('s3')
-        
+            raise ValueError(
+                "S3_BUCKET_NAME environment variable is missing in production!"
+            )
+
+        logging.info(
+            f"PRODUCTION: Downloading raw data from s3://{bucket_name}/{s3_key}..."
+        )
+        s3_client = boto3.client("s3")
+
         # Create a temporary file to hold the CSV just long enough for Pandas to read it
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=True) as temp_file:
             try:
