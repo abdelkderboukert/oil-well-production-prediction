@@ -161,8 +161,8 @@ def save_rf_model(
         s3_client = boto3.client("s3")
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            temp_filepath = os.path.join(temp_dir, "temp_model.keras")
-            model.save(temp_filepath)
+            temp_filepath = os.path.join(temp_dir, "temp_model.joblib")
+            joblib.dump(model, temp_filepath)
 
             try:
                 s3_client.upload_file(temp_filepath, bucket_name, s3_key)
@@ -175,5 +175,5 @@ def save_rf_model(
     else:
         # --- DEVELOPMENT: Save locally ---
         os.makedirs(os.path.dirname(local_filepath), exist_ok=True)
-        model.save(local_filepath)
+        joblib.dump(model, local_filepath)
         logging.info(f"DEVELOPMENT: Model saved locally to {local_filepath}")

@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use aws_sdk_s3::primitives::ByteStream;
-use chrono::{Utc, NaiveDate};
-use sqlx::postgres::PgPoolOptions;
+use chrono::{NaiveDate, Utc};
 use rust_decimal::Decimal;
+use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::fs; // Added for saving files locally
 
@@ -33,12 +33,11 @@ struct ProductionRow {
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
-    
+
     // Check if we are in development or production
     let environment = env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
-    
-    let db_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
+
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -57,7 +56,7 @@ async fn main() -> Result<()> {
         FROM api_wellproduction p
         JOIN api_well w ON p.well_id = w.id
         ORDER BY w.name, p.date DESC
-        "#
+        "#,
     )
     .fetch_all(&pool)
     .await
@@ -67,9 +66,26 @@ async fn main() -> Result<()> {
 
     let mut wtr = csv::Writer::from_writer(vec![]);
     wtr.write_record(&[
-        "DATE", "WELL", "HOURS", "WHP", "WHT", "WLP", "H2O", "WATER", 
-        "prodindex", "W_GAS", "S_GAS", "LPG_MASS", "LPG_VOL", 
-        "COND_VOL", "COND_MASS", "C2M", "C3", "C4", "C5P", "TAG"
+        "DATE",
+        "WELL",
+        "HOURS",
+        "WHP",
+        "WHT",
+        "WLP",
+        "H2O",
+        "WATER",
+        "prodindex",
+        "W_GAS",
+        "S_GAS",
+        "LPG_MASS",
+        "LPG_VOL",
+        "COND_VOL",
+        "COND_MASS",
+        "C2M",
+        "C3",
+        "C4",
+        "C5P",
+        "TAG",
     ])?;
 
     for row in rows {
@@ -104,13 +120,17 @@ async fn main() -> Result<()> {
     if environment.to_lowercase() == "production" {
         let bucket_name = env::var("S3_BUCKET_NAME")
             .expect("S3_BUCKET_NAME must be set in production environment");
-            
+
         let config = aws_config::load_from_env().await;
         let client = aws_sdk_s3::Client::new(&config);
-        
-        let key = format!("exports/training_data_{}.csv", Utc::now().format("%Y%m%d_%H%M%S"));
 
-        client.put_object()
+        let key = format!(
+            "exports/training_data_{}.csv",
+            Utc::now().format("%Y%m%d_%H%M%S")
+        );
+
+        client
+            .put_object()
             .bucket(&bucket_name)
             .key(&key)
             .body(ByteStream::from(csv_data))
@@ -123,10 +143,10 @@ async fn main() -> Result<()> {
         // Development mode: Save locally so your Python script can read it
         let local_dir = "data";
         fs::create_dir_all(local_dir).context("Failed to create local data directory")?;
-        
+
         let local_path = format!("{}/raw_data.csv", local_dir);
         fs::write(&local_path, csv_data).context("Failed to write CSV locally")?;
-        
+
         println!("DEVELOPMENT: Saved CSV locally to {}", local_path);
     }
 
