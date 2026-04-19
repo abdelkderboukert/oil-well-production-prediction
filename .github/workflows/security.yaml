@@ -37,10 +37,8 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          head: ${{ github.sha }}
           extra_args: --debug --json
-      # --fail
       - name: Scan for credentials using GitGuardian
         uses: GitGuardian/ggshield-action@v1
         if: always()
@@ -96,8 +94,7 @@ jobs:
 
       - name: Install GitLeaks
         run: |
-          curl -sL https://github.com/zricethezav/gitleaks/releases/latest/download/gitleaks_$(uname | tr '[:upper:]' '[:lower:]')_amd64.tar.gz | tar xzf -
-          sudo mv gitleaks /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/master/install.sh | sudo sh -s -- -b /usr/local/bin
 
       - name: Scan repository with GitLeaks
         run: |
