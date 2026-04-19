@@ -301,7 +301,7 @@ class AnalyzeView(APIView):
         return best_feat, best_val
     
     def _save_production_record(self, well_id, parsed_date, row, is_anomaly):
-        """Helper to rapidly save or update production records during data streaming"""
+        """Saves a single production row to the database."""
         if not parsed_date:
             return
             
@@ -334,7 +334,7 @@ class AnalyzeView(APIView):
             logger.error(f"Failed to save production record inside AnalyzeView: {e}")
 
 class BulkWellCreateView(APIView):
-    """POST /api/wells/bulk-create/ — creates missing wells effortlessly"""
+    """Bulk create missing wells handler."""
     def post(self, request):
         wells_data = request.data.get('wells', [])
         if not wells_data:

@@ -185,7 +185,7 @@ with tab3:
                     well_history = df[df['WELL'] == well].sort_values("DATE").tail(7)
                     
                     if len(well_history) < 7:
-                        st.warning(f"⚠️ {well}: Not enough history to verify.")
+                        st.warning(f"[WARN] {well}: Not enough history to verify.")
                         continue
                         
                     seq_features = well_history[features].values
@@ -206,12 +206,12 @@ with tab3:
                             culprit, expected_val = perform_rca(rf_model, input_row, actual_w_gas)
                             
                             st.warning(f"""
-                            **🔍 Root Cause Diagnosis:** The field reported `{culprit}` as **{input_row[culprit]:.2f}**. 
+                            **Root Cause Diagnosis:** The field reported `{culprit}` as **{input_row[culprit]:.2f}**. 
                             However, to produce {actual_w_gas:,.2f} m³ of gas, the Random Forest calculates that `{culprit}` must actually be **~{expected_val:.2f}**. 
                             *Action: Send a team to check the {culprit} sensor/valve for {well}!*
                             """)
                     else:
-                        st.success(f"### ✅ {well}: Normal Operation")
+                        st.success(f"### {well}: Normal Operation")
                         st.write(f"**LSTM Expected:** {predicted_w_gas:,.2f} m³ | **Field Reported:** {actual_w_gas:,.2f} m³ (Error: {diff_pct*100:.2f}%)")
                         
         except Exception as e:

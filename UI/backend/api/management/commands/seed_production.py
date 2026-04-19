@@ -83,4 +83,4 @@ class Command(BaseCommand):
             )
             self.stdout.write(f"Done seeding {well.name}")
 
-        self.stdout.write(self.style.SUCCESS("✅ Seeding completed successfully."))
+        self.stdout.write(self.style.SUCCESS("Seeding completed successfully."))

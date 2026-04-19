@@ -74,14 +74,14 @@ def check_feature_leakage(df):
             if max_corr > 0.95:
                 status = "❌ HIGH LEAKAGE RISK"
             elif max_corr > 0.80:
-                status = "⚠️ STRONG DRIVER"
+                status = "STRONG DRIVER"
             else:
-                status = "✅ OK"
+                status = "OK"
                 safe_list.append(col)
                 
             print(f"{col:<15} | {max_corr:>30.4f} | {status}")
         else:
-            print(f"{col:<15} | {'COLUMN MISSING':>30} | ⚠️")
+            print(f"{col:<15} | {'COLUMN MISSING':>30} | WARN")
 
     config['pipeline']['safe_features'] = safe_list
     
