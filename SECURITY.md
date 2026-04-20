@@ -2,7 +2,7 @@
 
 ## Reporting Security Vulnerabilities
 
-We take security seriously. If you discover a security vulnerability, please email **security@example.com** instead of using the issue tracker.
+We take security seriously. If you discover a security vulnerability, please email **abdelkaderboukart@gmail.com** instead of using the issue tracker.
 
 ### Responsible Disclosure
 
