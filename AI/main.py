@@ -42,7 +42,7 @@ def main():
     lstm_model, lstm_y, lstm_pred, lstm_metrics = train_and_evaluate_lstm(
         clean_df, features_lstm, targets, TIME_STEPS, test_size, random_state
     )
-    save_lstm_model(lstm_model, filepath="models/production_model.keras")
+    save_lstm_model(lstm_model, "models/production_model.keras")
     all_metrics["LSTM"] = lstm_metrics
 
     # 2. Train and Save Random Forest (The Anomaly Detector)
