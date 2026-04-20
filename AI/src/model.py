@@ -110,17 +110,6 @@ def save_lstm_model_to_s3(model, bucket_name, s3_key="models/production_model.ke
 # ==========================================
 # 🌲 2. RANDOM FOREST MODEL (For Anomalies)
 # ==========================================
-# def build_rf_model(n_estimators=100, random_state=42):
-#     """Initializes the Random Forest model (Native Multi-Output support)."""
-#     logging.info(f"Initializing Random Forest model (Trees: {n_estimators})")
-#     model = RandomForestRegressor(
-#         n_estimators=n_estimators,
-#         random_state=random_state,
-#         n_jobs=-1
-#     )
-#     return model
-
-
 def build_rf_model(n_estimators=50, random_state=42):
     logging.info(
         f"Initializing Random Forest model (Trees: {n_estimators}) with RAM limits"
