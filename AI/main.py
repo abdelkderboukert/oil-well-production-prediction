@@ -49,7 +49,7 @@ def main():
     rf_model, rf_y, rf_pred, rf_metrics = train_and_evaluate_rf(
         clean_df, features, targets, test_size, random_state
     )
-    save_rf_model(rf_model, filepath="models/rf_model.joblib")
+    save_rf_model(rf_model, "models/rf_model.joblib")
     all_metrics["Random_Forest"] = rf_metrics
 
     # 3. Save Combined Metrics
