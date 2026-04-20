@@ -172,9 +172,10 @@ class AnalyzeView(APIView):
                 daily_df = pd.read_csv(file)
             else:
                 daily_df = pd.read_excel(file)
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to parse uploaded file in AnalyzeView")
             return Response(
-                {"error": f"Could not parse file: {e}"},
+                {"error": "Could not parse file. Please upload a valid CSV or Excel file."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
