@@ -103,10 +103,12 @@ pipeline {
 
         stage('Crudation-Test'){
             environment{
-                BACKEND_PORT = credentials(BACKEND_PORT)
+                B_PORT = credentials('BACKEND_PORT')
             }
             steps{
-                echo "${BACKEND_PORT}"
+                sh'
+                    echo "${env.B_PORT}"
+                '
             }
         }
     }
