@@ -106,9 +106,9 @@ pipeline {
                 B_PORT = credentials('BACKEND_PORT')
             }
             steps{
-                sh'
+                sh'''
                     echo "${env.B_PORT}"
-                '
+                '''
             }
         }
     }
