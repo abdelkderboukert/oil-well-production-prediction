@@ -1,86 +1,109 @@
-BRANCH = ['development', 'main', 'feature']
-MICROSERVICES = [
+// Corrected Groovy Global Definitions
+def BRANCH = ['development', 'main', 'feature']
+def MICROSERVICES = [
     [name: 'auth-serviced', path: '/auth', id: 'x1'],
     [name: 'AI-serviced', path: '/AI', id: 'x2'],
     [name: 'UI-serviced', path: '/UI', id: 'x3']
 ]
-VAR = ""
-pipeline{
+
+pipeline {
     agent {
         label 'linux'
     }
-    environment{
+    environment {
         VERSION = '0.5.87'
+        // We use the env context to cleanly handle dynamic variable propagation across stages
+        DYNAMIC_VAR = "" 
     }
-    stages{
-        stage('test'){
-            when{
-                allof{
-                    anyof{
+    stages {
+        stage('test') {
+            when {
+                allOf {
+                    anyOf {
                         branch 'development'
                         branch 'main' 
                         branch 'feature-*'
                     }
-                    allof{
-                        fileExist 'dockerfile'
-                        fileExist 'test/requirements.txt'
+                    allOf {
+                        fileExists 'Dockerfile' // Match standard container casing
+                        fileExists 'test/requirements.txt'
                         changeset 'test/dataset/'
                     }
                 }
             }
-            steps{
-                sh'
-                    echo this will run only in the 
-                '
-                FirstFuntion(BRANCH[1],5)
-                script{VAR = 5.2.65}
+            steps {
+                sh '''
+                    echo "This will run only on matched development, main, or feature branches"
+                '''
+                // Execute your custom global function safely
+                FirstFunction(BRANCH[1], 5)
+                
+                script {
+                    // Update environment variable cleanly
+                    env.DYNAMIC_VAR = "5.2.65"
+                }
             }
-            post{
-                always{
-                    cleanWS()
+            post {
+                always {
+                    cleanWs() // Fixed casing
                 }
-                failure{
-                    echo "the pipeline is complite with failure"
+                failure {
+                    echo "The pipeline completed with failure"
                 }
-                success{
-                    echo "the pipeline is complite with success"
+                success {
+                    echo "The pipeline completed with success"
                 }
-                unstable{
-                    echo " hi there"
+                unstable {
+                    echo "Pipeline state is unstable"
                 }
             }
         }
-        stage('build'){
-            when{
+        
+        stage('build') {
+            when {
                 branch 'main'
             }
-            matrix{
-                axes{
-                    axis{
+            matrix {
+                axes {
+                    axis {
                         name 'X'
-                        values 'x1','x2','x3','x4'
+                        values 'x1', 'x2', 'x3', 'x4'
                     }
-                    axis{
+                    axis {
                         name 'Y'
                         values 'y1', 'y2', 'y3', 'y4'
                     }
                 }
-                excludes{
-                    exclude{
-                        axis {name 'X'; values 'x1','x2','x3'}
-                        axis {name 'Y'; values 'y1'}
+                excludes {
+                    exclude {
+                        axis { name 'X'; values 'x1', 'x2', 'x3' }
+                        axis { name 'Y'; values 'y1' }
                     }
                 }
-            }
-            steps{
-                echo "${VAR}"
-                def microservice = MICROSERVICES.find{it.id == X}
-                echo "${X}-${Y}"
+                stages {
+                    stage('Matrix Execution') {
+                        steps {
+                            echo "Dynamic Var from previous stage: ${env.DYNAMIC_VAR}"
+                            echo "Current Matrix Axis Coordinates: ${X}-${Y}"
+                            
+                            script {
+                                // Encapsulated Groovy parsing safely inside script block
+                                def microservice = MICROSERVICES.find { it.id == X }
+                                if (microservice) {
+                                    echo "Targeting Microservice: ${microservice.name} at path ${microservice.path}"
+                                } else {
+                                    echo "No matching microservice configuration mapped for ID: ${X}"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-def FirstFuntion(BranchName, n){
-    echo "${BranchName}"
+// Global functions must remain outside the pipeline block
+def FirstFunction(String branchName, int n) {
+    echo "Executing FirstFunction on branch: ${branchName} with parameter: ${n}"
 }
