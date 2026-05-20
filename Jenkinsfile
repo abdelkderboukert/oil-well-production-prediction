@@ -100,6 +100,15 @@ pipeline {
                 }
             }
         }
+
+        stage('Crudation-Test'){
+            environment{
+                BACKEND_PORT = credentials(BACKEND_PORT)
+            }
+            steps{
+                echo "${BACKEND_PORT}"
+            }
+        }
     }
 }
 
