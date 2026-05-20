@@ -24,11 +24,11 @@ pipeline {
                         branch 'main' 
                         branch 'feature-*'
                     }
-                    allOf {
-                        fileExists 'Dockerfile' // Match standard container casing
-                        fileExists 'test/requirements.txt'
-                        changeset 'test/dataset/'
+                    expression { 
+                        return fileExists('Dockerfile') && 
+                               fileExists('test/requirements.txt')
                     }
+                    changeset 'test/dataset/'
                 }
             }
             steps {
