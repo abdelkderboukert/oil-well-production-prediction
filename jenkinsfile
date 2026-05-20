@@ -2,7 +2,7 @@ BRANCH = ['development', 'main', 'feature']
 MICROSERVICES = [
     [name: 'auth-serviced', path: '/auth', id: 'x1'],
     [name: 'AI-serviced', path: '/AI', id: 'x2'],
-    [name: 'MDM-serviced', path: '/MDM', id: 'x3']
+    [name: 'UI-serviced', path: '/UI', id: 'x3']
 ]
 VAR = ""
 pipeline{
