@@ -1,0 +1,86 @@
+BRANCH = ['development', 'main', 'feature']
+MICROSERVICES = [
+    [name: 'auth-serviced', path: '/auth', id: 'x1'],
+    [name: 'AI-serviced', path: '/AI', id: 'x2'],
+    [name: 'MDM-serviced', path: '/MDM', id: 'x3']
+]
+VAR = ""
+pipeline{
+    agent {
+        label 'linux'
+    }
+    environment{
+        VERSION = '0.5.87'
+    }
+    stages{
+        stage('test'){
+            when{
+                allof{
+                    anyof{
+                        branch 'development'
+                        branch 'main' 
+                        branch 'feature-*'
+                    }
+                    allof{
+                        fileExist 'dockerfile'
+                        fileExist 'test/requirements.txt'
+                        changeset 'test/dataset/'
+                    }
+                }
+            }
+            steps{
+                sh'
+                    echo this will run only in the 
+                '
+                FirstFuntion(BRANCH[1],5)
+                script{VAR = 5.2.65}
+            }
+            post{
+                always{
+                    cleanWS()
+                }
+                failure{
+                    echo "the pipeline is complite with failure"
+                }
+                success{
+                    echo "the pipeline is complite with success"
+                }
+                unstable{
+                    echo " hi there"
+                }
+            }
+        }
+        stage('build'){
+            when{
+                branch 'main'
+            }
+            matrix{
+                axes{
+                    axis{
+                        name 'X'
+                        values 'x1','x2','x3','x4'
+                    }
+                    axis{
+                        name 'Y'
+                        values 'y1', 'y2', 'y3', 'y4'
+                    }
+                }
+                excludes{
+                    exclude{
+                        axis {name 'X'; values 'x1','x2','x3'}
+                        axis {name 'Y'; values 'y1'}
+                    }
+                }
+            }
+            steps{
+                echo "${VAR}"
+                def microservice = MICROSERVICES.find{it.id == X}
+                echo "${X}-${Y}"
+            }
+        }
+    }
+}
+
+def FirstFuntion(BranchName, n){
+    echo "${BranchName}"
+}
