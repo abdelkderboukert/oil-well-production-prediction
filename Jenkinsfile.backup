@@ -1,0 +1,344 @@
+pipeline {
+    agent any 
+
+    triggers {
+        // Runs at hour 0, day 2 of month, any month, day 0 of week (Sunday)
+        cron('H 0 2 * * 0')
+    }
+
+    stages {
+        stage('Orchestrate Multi-Component Pipeline') {
+            when {
+                anyOf {
+                    branch 'dev-*'
+                }
+            }
+            parallel {
+                stage('AI Component') {
+                    // Nested sequential stages execute in order for the AI branch of the parallel tree
+                    stages {
+                        stage('Linting') {
+                            steps {
+                                dir('AI') {
+                                    echo "Running Linter..."
+                                    sh 'pip install black isort'
+                                    sh '
+                                        flake8 src/ main.py --count --select=E9,F63,F7,F82 --show-source --statistics
+                                        flake8 src/ main.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+                                    '
+                                    sh 'black --check src/ main.py'
+                                }
+                            }
+                        }
+                        stage('Secret Scanning (TruffleHog & Gitleaks)') {
+                            steps {
+                                dir('AI') {
+                                    echo "Scanning for exposed secrets and credentials..."
+                                    sh '''
+                                        echo "=========================================" > SCRapport.txt
+                                        echo "#####          AI            #####" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                        echo "Scan Date: \$(date)" >> SCRapport.txt
+                                        echo "" >> SCRapport.txt
+                                    '''
+
+                                    // 1. Run Gitleaks and append results
+                                    echo "Running Gitleaks..."
+                                    sh '''
+                                        echo "##### AI-Gitleaks Scan #####" >> SCRapport.txt
+
+                                        gitleaks detect --source=. --verbose --redact >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "-----------------------------------------" >> SCRapport.txt
+                                    '''
+
+                                    // 2. Run TruffleHog and append results
+                                    echo "Running TruffleHog..."
+                                    sh '''
+                                        echo "##### AI-TruffleHog Scan #####" >> SCRapport.txt
+                                        
+                                        # Run trufflehog in plain text format and append output
+                                        trufflehog filesystem . --only-verified >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                }
+                            }
+                        }
+                        stage('Unit Tests') {
+                            steps{
+                                dir('AI') {
+                                    echo "prepare for the Test Unit..."
+                                    sh '''
+                                        python -m pip install --upgrade pip
+                                        pip install -r requirements.txt
+                                        pip install pytest pytest-cov
+                                    '''
+                                    sh '''
+                                        echo "##### AI-Gitleaks Scan #####" >> SCRapport.txt
+                                        pytest tests/ -v --cov=src --cov-report=xml --cov-report=html >> SCRapport.txt 2>&1 || true
+
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                }
+                            }
+                        }
+                        stage('SAST & SCA Analysis') {
+                            steps {
+                                dir('AI') {
+                                    echo "Executing Static Application Security Testing..."
+                                    echo "Running Semgrep SAST..."
+                                    sh '''
+                                        echo "##### AI-Semgrep SAST Scan #####" >> SCRapport.txt
+                                        
+                                        semgrep scan --config="p/python" --text >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                    echo "Running Trivy SCA..."
+                                    sh '''
+                                        echo "##### AI-Trivy SCA Scan #####" >> SCRapport.txt
+                                        
+                                        trivy fs . --vuln-type library --scanners vuln >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                }
+                            }
+                        }
+                    }
+                    post{
+                        always {
+                            dir('AI') {
+                                echo "Archiving Consolidated Security Report..."
+                                archiveArtifacts artifacts: 'SCRapport.txt', allowEmptyArchive: false
+                            }
+                        }
+                        failure {
+                            echo "1"
+                        }
+                    }
+                }
+
+                stage('Frontend Component') {
+                    stages {
+                        stage('Linting'){
+                            steps{
+                                dir('UI/frontend')
+                            }
+                            sh '''
+                                echo "=========================================" > SCRapport.txt
+                                echo "#####          FRONTEND            #####" >> SCRapport.txt
+                                echo "=========================================" >> SCRapport.txt
+                                echo "Scan Date: \$(date)" >> SCRapport.txt
+                                echo "" >> SCRapport.txt
+                            '''
+                            sh '''
+                                echo "=== Installing Frontend Dependencies ==="
+                                npm ci
+                                
+                                echo "=== Running Next.js ESLint ==="
+                                npm run lint
+                            '''
+                        }
+                        stage('Secret Scanning (TruffleHog & Gitleaks)') {
+                            steps {
+                                dir('UI/Frontend') {
+                                    echo "Scanning for exposed secrets and credentials..."
+
+                                    // 1. Run Gitleaks and append results
+                                    echo "Running Gitleaks..."
+                                    sh '''
+                                        echo "##### Frontend-Gitleaks Scan #####" >> SCRapport.txt
+
+                                        gitleaks detect --source=. --verbose --redact >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "-----------------------------------------" >> SCRapport.txt
+                                    '''
+
+                                    // 2. Run TruffleHog and append results
+                                    echo "Running TruffleHog..."
+                                    sh '''
+                                        echo "##### Frontend-TruffleHog Scan #####" >> SCRapport.txt
+                                        
+                                        # Run trufflehog in plain text format and append output
+                                        trufflehog filesystem . --only-verified >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                }
+                            }
+                        }
+                        stage('SAST & SCA Analysis') {
+                            steps {
+                                dir('UI/frontend') {
+                                    echo "Executing Static Application Security Testing..."
+                                    echo "Running Semgrep SAST..."
+                                    sh '''
+                                        echo "##### Frontend-Semgrep SAST Scan #####" >> SCRapport.txt
+                                        
+                                        semgrep scan --config="p/javascript" --text >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                    echo "Running Trivy SCA..."
+                                    sh '''
+                                        echo "##### Frontend-Trivy SCA Scan #####" >> SCRapport.txt
+                                        
+                                        trivy fs . --vuln-type library --scanners vuln >> SCRapport.txt 2>&1 || true
+                                        
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                }
+                            }
+                        }
+                    }
+                    post{
+                        always {
+                            dir('AI') {
+                                echo "Archiving Consolidated Security Report..."
+                                archiveArtifacts artifacts: 'SCRapport.txt', allowEmptyArchive: false
+                            }
+                        }
+                        failure {
+                            echo "1"
+                        }
+                    }
+                }
+
+                stage('Backend Component') {
+                    stages {
+                        stages {
+                            stage('Linting') {
+                                steps {
+                                    dir('UI/Backend') {
+                                        echo "Running Linter..."
+                                        sh 'pip install black isort'
+                                        sh '
+                                            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+                                            flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+                                        '
+                                        sh 'black --check .'
+                                    }
+                                }
+                            }
+                            stage('Secret Scanning (TruffleHog & Gitleaks)') {
+                                steps {
+                                    dir('UI/Backend') {
+                                        echo "Scanning for exposed secrets and credentials..."
+                                        sh '''
+                                            echo "=========================================" > SCRapport.txt
+                                            echo "#####          Backend            #####" >> SCRapport.txt
+                                            echo "=========================================" >> SCRapport.txt
+                                            echo "Scan Date: \$(date)" >> SCRapport.txt
+                                            echo "" >> SCRapport.txt
+                                        '''
+
+                                        // 1. Run Gitleaks and append results
+                                        echo "Running Gitleaks..."
+                                        sh '''
+                                            echo "##### Backend-Gitleaks Scan #####" >> SCRapport.txt
+
+                                            gitleaks detect --source=. --verbose --redact >> SCRapport.txt 2>&1 || true
+                                            
+                                            echo "" >> SCRapport.txt
+                                            echo "-----------------------------------------" >> SCRapport.txt
+                                        '''
+
+                                        // 2. Run TruffleHog and append results
+                                        echo "Running TruffleHog..."
+                                        sh '''
+                                            echo "##### Backend-TruffleHog Scan #####" >> SCRapport.txt
+                                            
+                                            # Run trufflehog in plain text format and append output
+                                            trufflehog filesystem . --only-verified >> SCRapport.txt 2>&1 || true
+                                            
+                                            echo "" >> SCRapport.txt
+                                            echo "=========================================" >> SCRapport.txt
+                                        '''
+                                    }
+                                }
+                            }
+                            stage('Unit Tests') {
+                                dir('UI/Backend') {
+                                    echo "prepare for the Test Unit..."
+                                    sh '''
+                                        python -m pip install --upgrade pip
+                                        pip install -r requirements.txt
+                                        pip install pytest pytest-cov django
+                                    '''
+                                    sh '''
+                                        echo "##### Backend-Gitleaks Scan #####" >> SCRapport.txt
+                                        python manage.py test >> SCRapport.txt 2>&1 || true
+
+                                        echo "" >> SCRapport.txt
+                                        echo "=========================================" >> SCRapport.txt
+                                    '''
+                                }
+                            }
+                            stage('SAST & SCA Analysis') {
+                                steps {
+                                    dir('Backend') {
+                                        echo "Executing Static Application Security Testing..."
+                                        echo "Running Semgrep SAST..."
+                                        sh '''
+                                            echo "##### Backend-Semgrep SAST Scan #####" >> SCRapport.txt
+                                            
+                                            semgrep scan --config="p/python" --text >> SCRapport.txt 2>&1 || true
+                                            
+                                            echo "" >> SCRapport.txt
+                                            echo "=========================================" >> SCRapport.txt
+                                        '''
+                                        echo "Running Trivy SCA..."
+                                        sh '''
+                                            echo "##### Backend-Trivy SCA Scan #####" >> SCRapport.txt
+                                            
+                                            trivy fs . --vuln-type library --scanners vuln >> SCRapport.txt 2>&1 || true
+                                            
+                                            echo "" >> SCRapport.txt
+                                            echo "=========================================" >> SCRapport.txt
+                                        '''
+                                    }
+                                }
+                            }
+                        }
+                        post{
+                            always {
+                                dir('AI') {
+                                    echo "Archiving Consolidated Security Report..."
+                                    archiveArtifacts artifacts: 'SCRapport.txt', allowEmptyArchive: false
+                                }
+                            }
+                            failure {
+                                echo "1"
+                            }
+                        }
+                    }
+                }
+
+                stage('Middle-Man Component') {
+                    steps {
+                        dir('middle-man') {
+                            echo "Executing Middle-Man pipeline..."
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Post-Analysis Verification') {
+            steps {
+                echo "All parallel components executed and verified successfully."
+            }
+        }
+    }
+}
