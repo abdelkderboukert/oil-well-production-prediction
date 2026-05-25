@@ -107,4 +107,4 @@ pytest tests/ -v
 - Check existing documentation
 - Look at issue discussions
 - Ask in pull request comments
-- Email: info@example.com
+- Email: abdelkaderboukart@gmail.com
