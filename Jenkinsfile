@@ -136,6 +136,12 @@ pipeline {
                 }
 
                 stage('AI: Build Docker Image') {
+                    whene {
+                        anyof{
+                            branch 'main'
+                            branch 'development'
+                        }
+                    }
                     steps {
                         dir('AI') {
                             script {
@@ -153,6 +159,12 @@ pipeline {
                 }
 
                 stage('AI: Image Scanning') {
+                    whene {
+                        anyof{
+                            branch 'main'
+                            branch 'development'
+                        }
+                    }
                     steps {
                         script {
                             echo "=== AI Component: Scanning Docker Image ==="
@@ -235,6 +247,12 @@ pipeline {
                 }
 
                 stage('Frontend: Build Docker Image') {
+                    whene {
+                        anyof{
+                            branch 'main'
+                            branch 'development'
+                        }
+                    }
                     steps {
                         dir('UI/frontend') {
                             script {
@@ -316,6 +334,12 @@ pipeline {
                 }
 
                 stage('Backend: Build Docker Image') {
+                    whene {
+                        anyof{
+                            branch 'main'
+                            branch 'development'
+                        }
+                    }
                     steps {
                         dir('UI/backend') {
                             script {
