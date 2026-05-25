@@ -8,7 +8,7 @@ pipeline {
     }
 
     triggers {
-        cron('H 0 2 * * 0')  // Weekly scan
+        cron('H 0 2 * *')  // Weekly scan
         pollSCM('H/15 * * * *')  // Poll every 15 minutes
     }
 
