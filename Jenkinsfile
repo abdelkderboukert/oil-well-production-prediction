@@ -136,7 +136,7 @@ pipeline {
                 }
 
                 stage('AI: Build Docker Image') {
-                    whene {
+                    when {
                         anyof{
                             branch 'main'
                             branch 'development'
@@ -159,7 +159,7 @@ pipeline {
                 }
 
                 stage('AI: Image Scanning') {
-                    whene {
+                    when {
                         anyof{
                             branch 'main'
                             branch 'development'
@@ -247,7 +247,7 @@ pipeline {
                 }
 
                 stage('Frontend: Build Docker Image') {
-                    whene {
+                    when {
                         anyof{
                             branch 'main'
                             branch 'development'
@@ -334,7 +334,7 @@ pipeline {
                 }
 
                 stage('Backend: Build Docker Image') {
-                    whene {
+                    when {
                         anyof{
                             branch 'main'
                             branch 'development'
