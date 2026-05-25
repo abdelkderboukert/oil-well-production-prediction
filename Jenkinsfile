@@ -89,7 +89,7 @@ pipeline {
                             script {
                                 echo "=== AI Component: Setup & Linting ==="
                                 sh '''
-                                    python --version
+                                    python3 --version
                                     pip install --upgrade pip
                                     pip install black isort flake8 pylint
                                     
@@ -289,7 +289,7 @@ pipeline {
                             script {
                                 echo "=== Backend Component: Setup & Linting ==="
                                 sh '''
-                                    python --version
+                                    python3 --version
                                     pip install --upgrade pip
                                     pip install black isort flake8 pylint
                                     
@@ -326,7 +326,7 @@ pipeline {
                                 echo "=== Backend Component: Unit Tests ==="
                                 sh '''
                                     pip install -r requirements.txt pytest pytest-django pytest-cov
-                                    python manage.py test --keepdb 2>&1 | tee ../../reports/backend-tests.txt || true
+                                    python3 manage.py test --keepdb 2>&1 | tee ../../reports/backend-tests.txt || true
                                 '''
                             }
                         }
