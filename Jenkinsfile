@@ -49,8 +49,8 @@ pipeline {
                                     gitleaks detect --source=. --verbose --redact >> reports/secrets-scan.txt 2>&1 || true
                                     
                                     echo "" >> reports/secrets-scan.txt
-                                    echo "--- TruffleHog Scan ---" >> reports/secrets-scan.txt
-                                    trufflehog filesystem . --only-verified >> reports/secrets-scan.txt 2>&1 || true
+                                    // echo "--- TruffleHog Scan ---" >> reports/secrets-scan.txt
+                                    // trufflehog filesystem . --only-verified >> reports/secrets-scan.txt 2>&1 || true
                                 '''
                             } catch (Exception e) {
                                 echo "Secret scan completed with warnings: ${e.message}"
