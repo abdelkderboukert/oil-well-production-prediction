@@ -184,6 +184,9 @@ pipeline {
                         archiveArtifacts artifacts: '../reports/ai-*.txt,../reports/ai-tests.xml', 
                                         allowEmptyArchive: true
                         publishHTML([
+                            allowMissing: true,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
                             reportDir: 'htmlcov',
                             reportFiles: 'index.html',
                             reportName: 'AI Coverage Report'
