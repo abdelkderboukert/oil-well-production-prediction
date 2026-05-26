@@ -18,6 +18,11 @@ pipeline {
         REGISTRY = 'your-registry.azurecr.io'
         IMAGE_NAME = 'oil-well-prediction'
         PYTHON_VERSION = '3.11'
+        // Docker/ECR Configuration
+        AWS_DEFAULT_REGION = 'us-east-1'
+        REGISTRY_URL = credentials('aws-ecr-registry-url')
+        IMAGE_REPO_NAME = 'oil-well-prediction'
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -363,6 +368,86 @@ pipeline {
                 always {
                     archiveArtifacts artifacts: 'reports/backend-*.txt', 
                                     allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Build Docker Image - Standard Docker CLI') {
+            steps {
+                script {
+                    echo "=== Building Docker Image using Standard Docker CLI ==="
+                    sh '''
+                        docker build -t ${REGISTRY_URL}/${IMAGE_REPO_NAME}:${IMAGE_TAG} .
+                        docker tag ${REGISTRY_URL}/${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REGISTRY_URL}/${IMAGE_REPO_NAME}:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Push to AWS ECR - Standard Docker CLI') {
+            steps {
+                script {
+                    echo "=== Pushing Docker Image to AWS ECR ==="
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding', 
+                        credentialsId: 'aws-credentials'
+                    ]]) {
+                        sh '''
+                            aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${REGISTRY_URL}
+                            docker push ${REGISTRY_URL}/${IMAGE_REPO_NAME}:${IMAGE_TAG}
+                            docker push ${REGISTRY_URL}/${IMAGE_REPO_NAME}:latest
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image - docker.build() Method') {
+            steps {
+                script {
+                    echo "=== Building Docker Image using docker.build() Method ==="
+                    def appImage = docker.build("${REGISTRY_URL}/${IMAGE_REPO_NAME}:${IMAGE_TAG}")
+                    echo "Docker image built successfully: ${appImage.id}"
+                }
+            }
+        }
+
+        stage('Push with docker.build() - Docker Pipeline') {
+            steps {
+                script {
+                    echo "=== Pushing Docker Image using docker.build() method ==="
+                    def appImage = docker.build("${REGISTRY_URL}/${IMAGE_REPO_NAME}:${IMAGE_TAG}")
+                    docker.withRegistry("https://${REGISTRY_URL}", 'ecr:us-east-1:aws-credentials') {
+                        appImage.push("${IMAGE_TAG}")
+                        appImage.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image - Docker Pipeline') {
+            steps {
+                script {
+                    echo "=== Building Docker Image using Docker Pipeline ==="
+                    docker.withRegistry("https://${REGISTRY_URL}", 'ecr:us-east-1:aws-credentials') {
+                        def app = docker.build("${IMAGE_REPO_NAME}:${IMAGE_TAG}")
+                        app.push()
+                        app.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Push to Registry - Docker Pipeline') {
+            steps {
+                script {
+                    echo "=== Pushing Docker Image using Docker Pipeline ==="
+                    docker.withRegistry("https://${REGISTRY_URL}", 'ecr:us-east-1:aws-credentials') {
+                        sh '''
+                            docker push ${REGISTRY_URL}/${IMAGE_REPO_NAME}:${IMAGE_TAG}
+                            docker push ${REGISTRY_URL}/${IMAGE_REPO_NAME}:latest
+                        '''
+                    }
                 }
             }
         }
