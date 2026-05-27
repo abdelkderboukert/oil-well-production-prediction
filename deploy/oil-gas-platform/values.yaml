@@ -44,3 +44,9 @@ mlops:
     schedule: "0 0 * * *" # Runs every midnight
   pythonTrainer:
     image: your-docker-repo/python-trainer:latest
+
+# DB
+database:
+  credentials:
+    user: "your_database_user"
+    password: "your_database_password"
